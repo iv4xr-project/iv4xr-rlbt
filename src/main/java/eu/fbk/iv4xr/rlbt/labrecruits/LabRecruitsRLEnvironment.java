@@ -6,6 +6,7 @@ package eu.fbk.iv4xr.rlbt.labrecruits;
 import static nl.uu.cs.aplib.AplibEDSL.SEQ;
 import static nl.uu.cs.aplib.AplibEDSL.goal;
 
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -21,6 +22,8 @@ import burlap.mdp.singleagent.environment.EnvironmentOutcome;
 import burlap.statehashing.HashableState;
 import environments.LabRecruitsEnvironment;
 import eu.fbk.iv4xr.rlbt.QLearningRL;
+import eu.fbk.iv4xr.rlbt.distance.StateDistance;
+import eu.fbk.iv4xr.rlbt.labrecruits.distance.JaccardDistance;
 import eu.iv4xr.framework.mainConcepts.TestDataCollector;
 import eu.iv4xr.framework.mainConcepts.WorldEntity;
 import eu.iv4xr.framework.spatial.Vec3;
@@ -55,13 +58,19 @@ public class LabRecruitsRLEnvironment implements Environment {
 	private String labRecruitsLevel;
 	
 	/*set the testing goal entity and entity type*/
-	private String goalentity = "door3"; //"button3";
-	private String goalentitytype = LabEntity.DOOR;//LabEntity.SWITCH;
-	private String goalentitystatus ="isOpen"; //"isOn" for a door, "isOn" for a button
+	private String goalentity = "button3";
+	private String goalentitytype = LabEntity.SWITCH;
+	private String goalentitystatus = "isOn"; // for a door, "isOn" for a button
 	
-	public LabRecruitsRLEnvironment(int maxUpdateCycles, String level) {
+	//store visited states from environment in an episode
+	HashMap<String, Integer> visitedStates = new HashMap<String, Integer>();
+
+	private StateDistance stateDistance;
+	
+	public LabRecruitsRLEnvironment(int maxUpdateCycles, String level, StateDistance stateDistance) {
 		MAX_CYCLES = maxUpdateCycles;
 		labRecruitsLevel = level;
+		this.stateDistance = stateDistance;
 	}
 	
 	/*start RL environment*/
@@ -173,20 +182,6 @@ public class LabRecruitsRLEnvironment implements Environment {
 		
 		for (WorldEntity worldEntity : beliefState.knownEntities()){
 			worldEntity.timestamp=0;
-			//DPrint.ul("Entity : "+worldEntity.id+ "   type : "+worldEntity.type+" hashcode:"+worldEntity.hashCode()+"  dynamic: "+worldEntity.dynamic+"  extent: "+worldEntity.extent+"  position : "+worldEntity.position+"  has changed state : "+worldEntity.hasChangedState()+"  is moving : "+worldEntity.getStringProperty(labRecruitsLevel));
-			//System.out.println("Printing worldmodel key  = ");
-			//for (String key : worldEntity.properties.keySet())
-	        //    System.out.println(key + " - " + worldEntity.getProperty(key));
-	        //System.out.println("Element value : is empty = "+ worldEntity.elements.isEmpty());
-	        //for (String key : worldEntity.elements.keySet())
-	        //    System.out.println(key + " - " + worldEntity.elements.get(key));
-	        
-			//LabRecruitsEntityModel labentity = new LabRecruitsEntityModel(worldEntity.id, worldEntity.type, worldEntity.dynamic);
-			//labentity.setExtent(worldEntity.extent);
-			//labentity.setPosition(worldEntity.position);
-			//labentity.setVelocity(worldEntity.velocity);
-			//DPrint.ul("Entity : "+worldEntity.id+ "   type : "+worldEntity.type+" hashcode:"+worldEntity.hashCode()+"  dynamic: "+worldEntity.dynamic+"  extent: "+worldEntity.extent+"  position : "+worldEntity.position+"  has changed state : "+worldEntity.hasChangedState()+"  is moving : "+worldEntity.getStringProperty(labRecruitsLevel));
-			//currentState.addObject(new LabRecruitsEntityObject(worldEntity));
 			currentState.addObject(new LabRecruitsEntityObject(worldEntity));
 		}
 		DPrint.ul("Current Observation state of Agent  :"+ currentState.toString() );
@@ -368,6 +363,24 @@ public class LabRecruitsRLEnvironment implements Environment {
 		return new LabRecruitsActionType().allApplicableActions(state);
 	}
 	
+
+	/** 
+	 * Check the memory of visited states and returns the number of times this state is visited
+	 * 
+	 */
+	private int getNumofStateOccurance(String state2) {
+		int numoftimesvisited =0;
+		if (visitedStates.containsKey(state2.toString())){
+			numoftimesvisited = visitedStates.get(state2.toString());
+			visitedStates.put(state2.toString(), (numoftimesvisited+1));
+			return numoftimesvisited;
+			}
+		else {  // make a new entry for this state
+			visitedStates.put(state2.toString(), 1);
+			return numoftimesvisited;
+			}
+		}
+
 	
 	/**
 	 * Compute the reward for the given action.
@@ -380,31 +393,59 @@ public class LabRecruitsRLEnvironment implements Environment {
 //	@Override
 	public double getReward(State state1, State state2, Action action) {
 		
+		//System.out.println("Action  = "+action.actionName());
 		double reward = 0;
-		if (isFinal(state2)) {
+				
+		if (isFinal(state2)) {			
 			reward = 100;
+			//System.out.println("Action  = "+action.actionName()+"  Final State, reward = "+reward);
 		} else {
 		
 			// check if the agent was stuck, don't penalize it
 			if (testAgent.getState().isStuck()) {
 				reward = 0;			
-			} /*else {
-				// reward movement, penalise staying at the same position
-				Vec3 recentPositions = testAgent.getState().worldmodel.getFloorPosition();//recentPositions.length()
-				//List<Vec3> recentPositions = testAgent.getState().getRecentPositions();
-				if (recentPositions.length() >= 2) {//(recentPositions.size() >= 2) {
-					if (recentPositions.get(recentPositions.length()-1).equals(recentPositions.get(recentPositions.length()-2))) {
-						reward = -1;
-					} else {
-						reward = 0;
-					}
-				}else {
-					// means did not move enough to have more recent positions
-					reward = -1;
+				//System.out.println("Action  = "+action.actionName()+"  Stuck , reward = "+reward);
+			} else {
+				//first - consider explored states- give reward for exploring a new state
+				double sim = stateDistance.distance(state1, state2); // getStatesSimilarityMeasures(state1,state2); 
+				double dissimilarity = (1-sim);
+				int stateOccurance = 0;
+				stateOccurance =  getNumofStateOccurance(state2.toString());
+				// give reward for exploring a new quite different state
+				if (dissimilarity >=0.2 && stateOccurance<5) {
+					reward = reward+ 1;//(dissimilarity*10);
+					//System.out.println("Action  = "+action.actionName()+" Dissimilarity and fewer State Occurance, reward = "+reward);
 				}
-			}*/
+				//give penalty for exploring same state 
+				if (stateOccurance>5)
+				{
+					reward = reward - 1;
+					//System.out.println("Action  = "+action.actionName()+"  State visited over threshold,  penalty = "+reward);
+				}
+				//System.out.println("dissimilarity = "+dissimilarity+"  statevisited = "+stateOccurance);
+				// second -  consider agent's movement - reward movement, penalize staying at the same position
+//				List<Vec3> recentPositions = testAgent.getState().getMemorizedPath(); // .getRecentPositions();
+//				if (recentPositions.size() >= 2) {//(recentPositions.size() >= 2) {
+//					if (recentPositions.get(recentPositions.size()-1).equals(recentPositions.get(recentPositions.size()-2))) {
+//						//reward = -1;
+//						reward= reward-1;
+//						//System.out.println("Action  = "+action.actionName()+"  agent moving around same position, penalty = "+reward);
+//					} else {
+//						reward = reward -0;
+//						//System.out.println("Action  = "+action.actionName()+"  State visited over threshold,  penalty = "+reward);
+//						//reward = 0;
+//					}
+//				}else {
+//					// means did not move enough to have more recent positions
+//					reward=reward-1;
+//					//System.out.println("Action  = "+action.actionName()+" agent did not move enough to get more position,  penalty = "+reward);
+//					//reward = -1;
+//				}
+			}
+			
 		}
-		return reward;
+		//System.out.println("-------------------------Reward : "+ reward);
+		return reward; 
 	}
 
 //	@Override
@@ -426,7 +467,7 @@ public class LabRecruitsRLEnvironment implements Environment {
 		LabRecruitsState labRecruitsState = (LabRecruitsState)state;
 		if (labRecruitsState.getObjectsMap().containsKey(doorId)) {
 			LabRecruitsEntityObject entity = (LabRecruitsEntityObject) labRecruitsState.getObjectsMap().get(doorId);
-			return entity.labRecruitsEntity.getBooleanProperty(booleanProperty);
+			return entity.getLabRecruitsEntity().getBooleanProperty(booleanProperty);
 		}else {
 			return false;
 		}

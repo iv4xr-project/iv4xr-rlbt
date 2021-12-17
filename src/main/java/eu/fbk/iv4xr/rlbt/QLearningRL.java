@@ -483,42 +483,12 @@ public class QLearningRL extends MDPSolver implements QProvider, LearningAgent, 
 			}
 			
 			qFunction.put(s, node);
-			System.out.println("Qlearning -  state not found. Making new entry, Q function size : " +  qFunction.size());
+			//System.out.println("Qlearning -  state not found. Making new entry, Q function size : " +  qFunction.size());
 			
 		}
 		else {
-			System.out.println("Qlearning -  State exists. Q table size = "+  qFunction.size());
+			//System.out.println("Qlearning -  State exists. Q table size = "+  qFunction.size());
 		}
-		//Raihana implementation
-		/*QLearningStateNode node ;
-		if (checkhashentry(s)){
-			System.out.println("in QLearningStateNode :  Q function size :"+ qFunction.size());
-			node = qFunction.get(s);
-			if (node==null) {
-				System.out.println("Node value null");
-			}
-			
-			System.out.println("This state already exists  : " + node.qEntry);
-			//System.out.println("This state already exists");
-		}
-		else{
-			System.out.println("state not found");
-			node = new QLearningStateNode(s);
-			List<Action> gas = this.applicableActions(s.s());
-			
-			if(gas.isEmpty()){
-				System.out.println("Applicable action list is empty");
-				gas = this.applicableActions(s.s());
-				throw new RuntimeErrorException(new Error("No possible actions in this state, cannot continue Q-learning"));
-			}
-			for(Action ga : gas){
-				System.out.println("Applicable action : " + ga.actionName());
-				node.addQValue(ga, qInitFunction.qValue(s.s(), ga));
-			}
-			
-			qFunction.put(s, node);
-		}*/
-		
 		return node;
 		
 	}
@@ -529,50 +499,26 @@ public class QLearningRL extends MDPSolver implements QProvider, LearningAgent, 
 	 * @return the maximum Q-value in the hashed stated.
 	 */
 	protected double getMaxQ(HashableState s){
-		System.out.println("IN getMaxQ() function");
+		//System.out.println("IN getMaxQ() function");
 		double max = Double.NEGATIVE_INFINITY;
 		
-		for (HashableState key:this.qFunction.keySet()) {
-			if (key.equals(s)) {
-				QLearningStateNode node = qFunction.get(s);
-				System.out.println("In getMaxQ , got state ="+s);
-				List <QValue> qs = node.qEntry;//this.getQs(s);		
-				for(QValue q : qs){
-					if(q.q > max){
-						max = q.q;
-					}
-				}
-				break;
-			}
-			else {
-				System.out.println("No match (st,table)= "+s+"  and  "+key);
-			}
-			}
-		
-		/*if (qFunction.containsKey(s)) {
+		if (qFunction.containsKey(s)) {
 			QLearningStateNode node = qFunction.get(s);
-			System.out.println("In getMaxQ , got state ="+s);
+			//System.out.println("In getMaxQ , got state ="+s);
 			List <QValue> qs = node.qEntry;//this.getQs(s);		
 			for(QValue q : qs){
 				if(q.q > max){
 					max = q.q;
 				}
 			}
-		}*/
+		}		
+		// tofix : avoid sending negative infinity value
+		if (max == Double.NEGATIVE_INFINITY) {
+			max=0;
+		}		
 		return max;
 	}
 	
-	protected double getMaxQvalold(HashableState s){
-		if (qFunction.containsKey(s)){}
-		List <QValue> qs = this.getQs(s);
-		double max = Double.NEGATIVE_INFINITY;
-		for(QValue q : qs){
-			if(q.q > max){
-				max = q.q;
-			}
-		}
-		return max;
-	}
 
 	/**
 	 * Plans from the input state and then returns a {@link burlap.behavior.policy.GreedyQPolicy} that greedily
@@ -609,7 +555,7 @@ public class QLearningRL extends MDPSolver implements QProvider, LearningAgent, 
 	
 	@Override
 	public Episode runLearningEpisode(Environment env, int maxSteps) {	
-		System.out.println("Starting runLearningEpisode()");
+		//System.out.println("Starting runLearningEpisode()");
 		State initialState = env.currentObservation();		
 		Episode ea = new Episode(initialState);
 		HashableState curState = this.stateHash(initialState);
@@ -620,7 +566,6 @@ public class QLearningRL extends MDPSolver implements QProvider, LearningAgent, 
 
 		maxQChangeInLastEpisode = 0.;
 		while(!env.isInTerminalState() && (eStepCounter < maxSteps || maxSteps == -1)){
-			//System.out.println("In runLearningEpisode() - going to select an action");
 			Action action = learningPolicy.action(curState.s());
 			PrintQtable(curState);
 			//System.out.println("Inside runLearningEpisode(), selected action for this pass : "+action.actionName());
@@ -634,9 +579,9 @@ public class QLearningRL extends MDPSolver implements QProvider, LearningAgent, 
 			else{
 				eo = ((Option)action).control(env, this.gamma);
 			}
-			System.out.println("Action executed, returned in runLearningEpisode()- look for max q ");
+			//System.out.println("Action executed, returned in runLearningEpisode()- look for max q ");
 			HashableState nextState = this.stateHash(eo.op);
-			System.out.println("In runlearningepisode() ,hashed current state = "+curState.toString()+"  \n  next state = "+nextState.toString());
+			//System.out.println("In runlearningepisode() ,hashed current state = "+curState.toString()+"  \n  next state = "+nextState.toString());
 			double maxQ = 0.;
 
 //			System.out.println("hash state availabe in q table =  "+checkhashentry(nextState)); 
@@ -644,7 +589,7 @@ public class QLearningRL extends MDPSolver implements QProvider, LearningAgent, 
 			if(!eo.terminated){
 				maxQ = this.getMaxQ(nextState);
 			}
-			System.out.println("After getMaxQ() function - returned in runlearningepisodes()");
+			//System.out.println("After getMaxQ() function - returned in runlearningepisodes()");
 			//manage option specifics
 			double r = eo.r;
 			double discount = eo instanceof EnvironmentOptionOutcome ? ((EnvironmentOptionOutcome)eo).discount : this.gamma;
@@ -662,8 +607,10 @@ public class QLearningRL extends MDPSolver implements QProvider, LearningAgent, 
 
 			//update Q-value
 			//System.out.println("In runlearningepisodes() - update Q value");
-			curQ.q = curQ.q + this.learningRate.pollLearningRate(this.totalNumberOfSteps, curState.s(), action) * (r + (discount * maxQ) - curQ.q);
+			double vv = this.learningRate.pollLearningRate(this.totalNumberOfSteps, curState.s(), action) * (r + (discount * maxQ) - curQ.q);
+			curQ.q = curQ.q + vv;//this.learningRate.pollLearningRate(this.totalNumberOfSteps, curState.s(), action) * (r + (discount * maxQ) - curQ.q);
 			double deltaQ = Math.abs(oldQ - curQ.q);
+			
 			if(deltaQ > maxQChangeInLastEpisode){
 				maxQChangeInLastEpisode = deltaQ;
 			}
@@ -675,13 +622,31 @@ public class QLearningRL extends MDPSolver implements QProvider, LearningAgent, 
 		//System.out.println("End of an episode");
 		return ea;
 	}
+	
+	public void PrintFinalQtable() {
+		System.out.println("\n\n=====================Q-Table========================================");
+		System.out.println("Qtable size = "+this.qFunction.keySet().size());
+		System.out.println("----------------------------------------------------------------------------");
+		for (HashableState key:this.qFunction.keySet()){
+			QLearningStateNode node = qFunction.get(key);
+			System.out.println("State = "+node.s.s());
+			System.out.println("Number of Q value entry= "+ node.qEntry.size());
+			for (int i=0; i<node.qEntry.size();i++) {
+				System.out.print("action: "+node.qEntry.get(i).a.actionName());
+				//System.out.print("states : "+node.qEntry.get(i).s);
+				System.out.print("	value: "+node.qEntry.get(i).q);	
+				System.out.print("\n");
+				}
+			}
+		System.out.println("----------------------------------------------------------------------------");
+		}  // end of the function
 
 	
 	private void PrintQtable(HashableState curState) {
 		QLearningStateNode value = qFunction.get(curState);
 		List<QValue> qEntry = value.qEntry;
 		for (QValue qvalue : qEntry) {
-			System.out.println(qvalue.s + "+" + qvalue.a + " -> " + qvalue.q);
+			System.out.println(qvalue.a.actionName() + " -> " + qvalue.q);
 		}
 //		System.out.println("=====================printing q table keys========================================");
 //		for (HashableState key:this.qFunction.keySet()){
@@ -737,45 +702,65 @@ public class QLearningRL extends MDPSolver implements QProvider, LearningAgent, 
 	}
 
 
-	// testing Q-learning agent
-	public void testQLearingAgent(Environment env, int maxSteps) {
-		System.out.println("TESTING OF Q-LEARNING AGENT");
-		
-		State initialState = env.currentObservation();
-		
-		
+	/*---------------------Test QLearning Agent------------------------------------------------------------------------*/
+	public void testQLearingAgent(Environment env, int maxSteps) {	
+		System.out.println("---------------------------------------------------------------\n Test  QLearning agent");
+		env.resetEnvironment();
+		State initialState = env.currentObservation();		
 		Episode ea = new Episode(initialState);
 		HashableState curState = this.stateHash(initialState);
-		DPrint.ul ("Initial State (Agent's view): "+ initialState.toString());
+		
+		System.out.println("Hashed state = " +curState+ "hash value  = "+ curState.hashCode());
+		//System.out.println("In runLearningEpisode() - Starting while() loop");
 		eStepCounter = 0;
 
-		maxQChangeInLastEpisode = 0.;
-		
-		
-		for (HashableState key:this.qFunction.keySet()){
-			//System.out.prinln(key.s());			
-			if (key.s().toString().equals(initialState.toString())){
-				System.out.println("Yes, one entry of this state is found in the q table");
-				double maxqval=0;
-				Action acc = this.qFunction.get(key).qEntry.get(0).a;
+		//maxQChangeInLastEpisode = 0.;
+		while(!env.isInTerminalState() && (eStepCounter < maxSteps || maxSteps == -1)){
+			Action action = getMaxValuedAction(curState);//learningPolicy.action(curState.s());
+			if (action != null) {
+				QValue curQ = this.getQ(curState, action);
 				
-				for (int i=0;i<this.qFunction.get(key).qEntry.size();i++) {
-					if (this.qFunction.get(key).qEntry.get(i).q > maxqval) 
-					{
-						acc= this.qFunction.get(key).qEntry.get(i).a;
-						maxqval = this.qFunction.get(key).qEntry.get(i).q;
-					}					
+				EnvironmentOutcome eo;
+				if(!(action instanceof Option)){
+					eo = env.executeAction(action);
 				}
-						
-				System.out.println("Best action with max q value for this state :  "+ initialState.toString()+ " action  :  "+acc.actionName()+ "  qval : "+ maxqval);
+				else{
+					eo = ((Option)action).control(env, this.gamma);
+				}
+				System.out.println("Action executed, returned in TestQLearingAgent()"+ action.actionName());
+				HashableState nextState = this.stateHash(eo.op);
+				System.out.println("In TestQLearingAgent() ,hashed current state = "+curState.hashCode()+"  \n  next state = "+nextState.hashCode());
 				
+				//move on polling environment for its current state in case it changed during processing
+				curState = this.stateHash(env.currentObservation());
+				System.out.println("TestQLearingAgent()  -- checking cur state  after action execution = "+ curState.s().toString());
+				//this.totalNumberOfSteps++;
 			}
-			
-			
 		}
-		
-		
 	}
+
+
+	// Testing Q-learning agent
+	public Action getMaxValuedAction(HashableState curstate) {	
+		System.out.println("getmaxvalueaction ()  - Q table size = "+ this.qFunction.size());
+		Action acc = null;
+		double max = Double.NEGATIVE_INFINITY;
+		
+		if (qFunction.containsKey(curstate)) {
+			QLearningStateNode node = qFunction.get(curstate);
+			System.out.println("In getMaxQ , got state ="+curstate.s());
+			List <QValue> qs = node.qEntry;//this.getQs(s);		
+			for(QValue q : qs){
+				if(q.q >= max){
+					max = q.q;
+					acc = q.a;
+				}
+			}
+		}				
+		//System.out.println("max valued action  = "+ acc.actionName()+" max val = "+max);
+		return acc;		
+	}
+		
 	
 	
 	@Override

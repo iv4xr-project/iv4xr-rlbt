@@ -79,4 +79,11 @@ public class LabRecruitsEntityObject implements ObjectInstance {
 		return new LabRecruitsEntityObject(this.labRecruitsEntity);
 	}
 
+	/**
+	 * @return the labRecruitsEntity
+	 */
+	public WorldEntity getLabRecruitsEntity() {
+		return labRecruitsEntity;
+	}
+
 }
