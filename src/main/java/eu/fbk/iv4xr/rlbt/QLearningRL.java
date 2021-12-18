@@ -567,7 +567,7 @@ public class QLearningRL extends MDPSolver implements QProvider, LearningAgent, 
 		maxQChangeInLastEpisode = 0.;
 		while(!env.isInTerminalState() && (eStepCounter < maxSteps || maxSteps == -1)){
 			Action action = learningPolicy.action(curState.s());
-			PrintQtable(curState);
+			printQtable(curState);
 			//System.out.println("Inside runLearningEpisode(), selected action for this pass : "+action.actionName());
 			//System.out.println("Get Q value");
 			QValue curQ = this.getQ(curState, action);
@@ -623,7 +623,7 @@ public class QLearningRL extends MDPSolver implements QProvider, LearningAgent, 
 		return ea;
 	}
 	
-	public void PrintFinalQtable() {
+	public void printFinalQtable() {
 		System.out.println("\n\n=====================Q-Table========================================");
 		System.out.println("Qtable size = "+this.qFunction.keySet().size());
 		System.out.println("----------------------------------------------------------------------------");
@@ -642,7 +642,7 @@ public class QLearningRL extends MDPSolver implements QProvider, LearningAgent, 
 		}  // end of the function
 
 	
-	private void PrintQtable(HashableState curState) {
+	private void printQtable(HashableState curState) {
 		QLearningStateNode value = qFunction.get(curState);
 		List<QValue> qEntry = value.qEntry;
 		for (QValue qvalue : qEntry) {
@@ -735,6 +735,9 @@ public class QLearningRL extends MDPSolver implements QProvider, LearningAgent, 
 				curState = this.stateHash(env.currentObservation());
 				System.out.println("TestQLearingAgent()  -- checking cur state  after action execution = "+ curState.s().toString());
 				//this.totalNumberOfSteps++;
+			}else {
+				// FIXME this is added to avoid an NPE, not sure it's the correct way
+				break; 
 			}
 		}
 	}

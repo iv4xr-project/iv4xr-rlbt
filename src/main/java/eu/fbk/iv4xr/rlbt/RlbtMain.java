@@ -28,10 +28,11 @@ import java.util.List;
 
 public class RlbtMain{
 	
+	//TODO expose these parameters as command line options
 	static String level = "buttons_doors_1";	/*labrecruits level name*/
 	static int maxUpdateCycles = 400;			/*max update cycles*/
 	static int numOfEpisodes =1;				/*number of episodes for Q-learning training*/
-	
+	static boolean testTrainedAgent = false;
 	
 	private static void labRecruitsExample() throws InterruptedException {
 		LabRecruitsRLEnvironment labRecruitsRlEnvironment = new LabRecruitsRLEnvironment(maxUpdateCycles, level, new JaccardDistance());
@@ -82,7 +83,6 @@ public class RlbtMain{
 	private static void labrecruitRLEx() throws InterruptedException {
 		/*initialize RL environment*/
 		LabRecruitsRLEnvironment labRecruitsRlEnvironment = new LabRecruitsRLEnvironment(maxUpdateCycles, level, new JaccardDistance());
-//		labRecruitsRlEnvironment.startAgentEnvironment();
 		
 		DPrint.ul("Initializing domain. Opening level :"+level);
 		DomainGenerator lrDomainGenerator = new LabRecruitsDomainGenerator();
@@ -93,7 +93,6 @@ public class RlbtMain{
 				
 		/*create Reinforcement Learning (Q-learning) agent*/
 		QLearningRL agent = new QLearningRL(domain, 0.99, new RlbtHashableStateFactory(), qinit, lr);
-		//QLearningRLAlgo agent = new QLearningRLAlgo(domain, 0.99, new SimpleHashableStateFactory(), qinit, lr);
 		List<Episode> episodes = new ArrayList<Episode>(1000);	//list to store results from Q-learning episodes
 		long startTime = System.currentTimeMillis();
 		
@@ -101,14 +100,16 @@ public class RlbtMain{
 		for(int i = 0; i < numOfEpisodes; i++){
 			labRecruitsRlEnvironment.resetEnvironment();  /*reset environment*/
 			episodes.add(agent.runLearningEpisode(labRecruitsRlEnvironment));
-			}
+		}
 		long estimatedTime = System.currentTimeMillis() - startTime;
 		System.out.println("Time - Training : "+estimatedTime);
-		//agent.writeQTable(outpath);
-		agent.PrintFinalQtable();
+		agent.writeQTable("qtable.yaml");
+		agent.printFinalQtable();
+
 		/*------------Testing - using the optimized Q-table------------------------*/
-		agent.testQLearingAgent(labRecruitsRlEnvironment, 1900);
-//		labRecruitsRlEnvironment.EvaluateQLearningAgent(agent.qFunction);
+		if (testTrainedAgent) {
+			agent.testQLearingAgent(labRecruitsRlEnvironment, 1900);
+		}
 		
 		labRecruitsRlEnvironment.stopAgentEnvironment();  /*stop RL agent environment*/
 	}

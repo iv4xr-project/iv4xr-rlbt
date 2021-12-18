@@ -424,27 +424,27 @@ public class LabRecruitsRLEnvironment implements Environment {
 				}
 				//System.out.println("dissimilarity = "+dissimilarity+"  statevisited = "+stateOccurance);
 				// second -  consider agent's movement - reward movement, penalize staying at the same position
-//				List<Vec3> recentPositions = testAgent.getState().getMemorizedPath(); // .getRecentPositions();
-//				if (recentPositions.size() >= 2) {//(recentPositions.size() >= 2) {
-//					if (recentPositions.get(recentPositions.size()-1).equals(recentPositions.get(recentPositions.size()-2))) {
-//						//reward = -1;
-//						reward= reward-1;
-//						//System.out.println("Action  = "+action.actionName()+"  agent moving around same position, penalty = "+reward);
-//					} else {
-//						reward = reward -0;
-//						//System.out.println("Action  = "+action.actionName()+"  State visited over threshold,  penalty = "+reward);
-//						//reward = 0;
-//					}
-//				}else {
-//					// means did not move enough to have more recent positions
-//					reward=reward-1;
-//					//System.out.println("Action  = "+action.actionName()+" agent did not move enough to get more position,  penalty = "+reward);
-//					//reward = -1;
-//				}
+				List<Vec3> recentPositions = testAgent.getState().getRecentPositions();
+				if (recentPositions.size() >= 2) {//(recentPositions.size() >= 2) {
+					if (recentPositions.get(recentPositions.size()-1).equals(recentPositions.get(recentPositions.size()-2))) {
+						//reward = -1;
+						reward= reward-1;
+						//System.out.println("Action  = "+action.actionName()+"  agent moving around same position, penalty = "+reward);
+					} else {
+						reward = reward -0;
+						//System.out.println("Action  = "+action.actionName()+"  State visited over threshold,  penalty = "+reward);
+						//reward = 0;
+					}
+				}else {
+					// means did not move enough to have more recent positions
+					reward=reward-1;
+					//System.out.println("Action  = "+action.actionName()+" agent did not move enough to get more position,  penalty = "+reward);
+					//reward = -1;
+				}
 			}
 			
 		}
-		//System.out.println("-------------------------Reward : "+ reward);
+		System.out.println("-------------------------Reward : "+ reward);
 		return reward; 
 	}
 
