@@ -1,5 +1,7 @@
 package eu.fbk.iv4xr.rlbt.labrecruits;
 
+import java.io.Serializable;
+
 import burlap.mdp.core.action.Action;
 import eu.iv4xr.framework.mainConcepts.WorldEntity;
 
@@ -9,7 +11,12 @@ import eu.iv4xr.framework.mainConcepts.WorldEntity;
  * @author kifetew
  *
  */
-public class LabRecruitsAction implements Action {
+public class LabRecruitsAction implements Action, Serializable {
+	/**
+	 * 
+	 */
+	private static final long serialVersionUID = -4299949484336198494L;
+
 	private String actionId;
 	
 	private WorldEntity interactedEntity;

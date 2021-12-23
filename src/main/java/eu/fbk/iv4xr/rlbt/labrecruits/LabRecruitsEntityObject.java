@@ -1,14 +1,19 @@
 package eu.fbk.iv4xr.rlbt.labrecruits;
 
 import java.io.IOException;
+import java.io.Serializable;
 import java.util.Arrays;
 import java.util.List;
 
 import burlap.mdp.core.oo.state.ObjectInstance;
 import eu.iv4xr.framework.mainConcepts.WorldEntity;
-import world.LabEntity;
 
-public class LabRecruitsEntityObject implements ObjectInstance {
+public class LabRecruitsEntityObject implements ObjectInstance, Serializable {
+
+	/**
+	 * 
+	 */
+	private static final long serialVersionUID = 2765476123303490377L;
 
 	WorldEntity labRecruitsEntity;
 	

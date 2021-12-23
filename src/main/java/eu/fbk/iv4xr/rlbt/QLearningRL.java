@@ -26,6 +26,8 @@ import burlap.mdp.singleagent.environment.SimulatedEnvironment;
 import burlap.mdp.singleagent.model.RewardFunction;
 import burlap.statehashing.HashableState;
 import burlap.statehashing.HashableStateFactory;
+import eu.fbk.iv4xr.rlbt.utils.SerializationUtil;
+
 import org.yaml.snakeyaml.Yaml;
 
 import javax.management.RuntimeErrorException;
@@ -805,7 +807,12 @@ public class QLearningRL extends MDPSolver implements QProvider, LearningAgent, 
 		}
 	}
 
+	public void serializeQTable (String path) throws FileNotFoundException {
+		SerializationUtil.saveQTable(qFunction, path);
+	}
 
-
+	public void deserializeQTable (String path) throws FileNotFoundException {
+		this.qFunction = SerializationUtil.loadQTable(path);
+	}
 
 }

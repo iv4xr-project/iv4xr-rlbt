@@ -86,16 +86,22 @@
             <version>2.7</version>
         </dependency>
 
+		<dependency>
+			<groupId>org.apache.commons</groupId>
+			<artifactId>commons-lang3</artifactId>
+			<version>3.0</version>
+		</dependency>
         <!-- dependencies on iv4xr Agent Framework -->
        <dependency>
-        <groupId>com.github.kifetew</groupId>
+        	<groupId>com.github.kifetew</groupId>
            <artifactId>burlap</artifactId>
            <version>devel-SNAPSHOT</version>
      </dependency>
+     
 	<dependency>
 	    <groupId>com.github.iv4xr-project</groupId>
 	    <artifactId>iv4xrDemo</artifactId>
-	    <version>2.3.3b</version>
+	    <version>2.3.3d</version>
 	</dependency>
     </dependencies>
 </project>

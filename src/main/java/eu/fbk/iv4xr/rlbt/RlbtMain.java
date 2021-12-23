@@ -18,6 +18,8 @@ import eu.fbk.iv4xr.rlbt.labrecruits.LabRecruitsRLEnvironment;
 import eu.fbk.iv4xr.rlbt.labrecruits.RlbtHashableStateFactory;
 import eu.fbk.iv4xr.rlbt.labrecruits.distance.JaccardDistance;
 import burlap.behavior.singleagent.Episode;
+
+import java.io.FileNotFoundException;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -30,8 +32,8 @@ public class RlbtMain{
 	
 	//TODO expose these parameters as command line options
 	static String level = "buttons_doors_1";	/*labrecruits level name*/
-	static int maxUpdateCycles = 400;			/*max update cycles*/
-	static int numOfEpisodes =1;				/*number of episodes for Q-learning training*/
+	static int maxUpdateCycles = 300;			/*max update cycles*/
+	static int numOfEpisodes =3;				/*number of episodes for Q-learning training*/
 	static boolean testTrainedAgent = false;
 	
 	private static void labRecruitsExample() throws InterruptedException {
@@ -79,8 +81,9 @@ public class RlbtMain{
 
 	/**************************************************************************************************
 	 * Reinforcement Learning - Q-Learning testing- by Raihana
+	 * @throws FileNotFoundException 
 	 **************************************************************************************************/
-	private static void labrecruitRLEx() throws InterruptedException {
+	private static void labrecruitRLEx() throws InterruptedException, FileNotFoundException {
 		/*initialize RL environment*/
 		LabRecruitsRLEnvironment labRecruitsRlEnvironment = new LabRecruitsRLEnvironment(maxUpdateCycles, level, new JaccardDistance());
 		
@@ -96,14 +99,16 @@ public class RlbtMain{
 		List<Episode> episodes = new ArrayList<Episode>(1000);	//list to store results from Q-learning episodes
 		long startTime = System.currentTimeMillis();
 		
+		labRecruitsRlEnvironment.startAgentEnvironment();
 		/*------------Training - start running episodes------------------------*/
 		for(int i = 0; i < numOfEpisodes; i++){
-			labRecruitsRlEnvironment.resetEnvironment();  /*reset environment*/
 			episodes.add(agent.runLearningEpisode(labRecruitsRlEnvironment));
+			labRecruitsRlEnvironment.resetEnvironment();  /*reset environment*/
 		}
 		long estimatedTime = System.currentTimeMillis() - startTime;
 		System.out.println("Time - Training : "+estimatedTime);
-		agent.writeQTable("qtable.yaml");
+//		agent.writeQTable("qtable.yaml");
+		agent.serializeQTable("qtable.ser");
 		agent.printFinalQtable();
 
 		/*------------Testing - using the optimized Q-table------------------------*/
@@ -114,13 +119,47 @@ public class RlbtMain{
 		labRecruitsRlEnvironment.stopAgentEnvironment();  /*stop RL agent environment*/
 	}
 
+	
+	static void labrecruitRLTest(String qTablePath) throws FileNotFoundException {
+		/*initialize RL environment*/
+		LabRecruitsRLEnvironment labRecruitsRlEnvironment = new LabRecruitsRLEnvironment(maxUpdateCycles, level, new JaccardDistance());
+		
+		DPrint.ul("Initializing domain. Opening level :"+level);
+		DomainGenerator lrDomainGenerator = new LabRecruitsDomainGenerator();
+		final SADomain domain = (SADomain) lrDomainGenerator.generateDomain();
+		
+		final double qinit = 0;   
+		final double lr = 0.85;
+				
+		/*create Reinforcement Learning (Q-learning) agent*/
+		QLearningRL agent = new QLearningRL(domain, 0.99, new RlbtHashableStateFactory(), qinit, lr);
+		long startTime = System.currentTimeMillis();
+		
+//		agent.loadQTable(qTablePath);
+		agent.deserializeQTable(qTablePath);
+		agent.printFinalQtable();
+		agent.testQLearingAgent(labRecruitsRlEnvironment, 1900);
+		
+		long estimatedTime = System.currentTimeMillis() - startTime;
+		System.out.println("Time - Testing : "+estimatedTime);
+
+		
+		labRecruitsRlEnvironment.stopAgentEnvironment();  /*stop RL agent environment*/
+	}
+	
 	/**
 	 * @param args
 	 * @throws InterruptedException 
+	 * @throws FileNotFoundException 
 	 */
-	public static void main(String[] args) throws InterruptedException {
+	public static void main(String[] args) throws InterruptedException, FileNotFoundException {
+		
 		//labRecruitsExample ();
 		labrecruitRLEx();
 
+		
+		String qTablePath = "qtable.ser";
+		labrecruitRLTest(qTablePath);
+		
 	}  /*End of main()*/
 } /*end*/

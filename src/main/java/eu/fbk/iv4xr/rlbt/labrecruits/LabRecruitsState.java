@@ -3,6 +3,7 @@
  */
 package eu.fbk.iv4xr.rlbt.labrecruits;
 
+import java.io.Serializable;
 import java.util.Map;
 import java.util.Map.Entry;
 
@@ -15,7 +16,12 @@ import world.LabEntity;
  * @author kifetew
  *
  */
-public class LabRecruitsState extends GenericOOState {
+public class LabRecruitsState extends GenericOOState implements Serializable {
+
+	/**
+	 * 
+	 */
+	private static final long serialVersionUID = 2179112444014557064L;
 
 	// add LabRecruits specific code here
 	
@@ -38,11 +44,11 @@ public class LabRecruitsState extends GenericOOState {
 			String name = entry.getKey();
 			LabRecruitsEntityObject labEntityObject = (LabRecruitsEntityObject) entry.getValue();
 			
-			WorldEntity entity = (WorldEntity) labEntityObject.get(name);
+			LabEntity entity = (LabEntity) labEntityObject.get(name);
 			String property = "";
-			if (entity.type == LabEntity.DOOR) {
+			if (entity.type.equalsIgnoreCase(LabEntity.DOOR)) {
 				property += entity.getBooleanProperty("isOpen");
-			}else if (entity.type == LabEntity.SWITCH){
+			}else if (entity.type.equalsIgnoreCase(LabEntity.SWITCH)){
 				property += entity.getBooleanProperty("isOn");
 			}
 				

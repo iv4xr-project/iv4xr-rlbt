@@ -3,6 +3,7 @@
  */
 package eu.fbk.iv4xr.rlbt.labrecruits;
 
+import java.io.Serializable;
 import java.util.Arrays;
 
 import burlap.mdp.core.state.State;
@@ -14,7 +15,13 @@ import world.LabEntity;
  * @author kifetew
  *
  */
-public class RlbtSimpleHashableState extends IISimpleHashableState {
+public class RlbtSimpleHashableState extends IISimpleHashableState implements Serializable {
+
+	/**
+	 * 
+	 */
+	private static final long serialVersionUID = 5127590788733589119L;
+
 
 	/**
 	 * 

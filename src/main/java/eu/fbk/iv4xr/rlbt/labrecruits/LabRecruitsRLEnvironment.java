@@ -44,7 +44,7 @@ import environments.LabRecruitsConfig;
 public class LabRecruitsRLEnvironment implements Environment {
 
 	
-	public static boolean USE_GRAPHICS = false;     /*for running Labrecruit game with graphic*/
+	public static boolean USE_GRAPHICS = true;     /*for running Labrecruit game with graphic*/
     
 	private LabRecruitsEnvironment labRecruitsAgentEnvironment = null; 
 	private static LabRecruitsTestServer labRecruitsTestServer = null;
@@ -58,9 +58,9 @@ public class LabRecruitsRLEnvironment implements Environment {
 	private String labRecruitsLevel;
 	
 	/*set the testing goal entity and entity type*/
-	private String goalentity = "button3";
-	private String goalentitytype = LabEntity.SWITCH;
-	private String goalentitystatus = "isOn"; // for a door, "isOn" for a button
+	private String goalentity = "door3";
+	private String goalentitytype = LabEntity.DOOR;
+	private String goalentitystatus = "isOpen"; // for a door, "isOn" for a button
 	
 	//store visited states from environment in an episode
 	HashMap<String, Integer> visitedStates = new HashMap<String, Integer>();

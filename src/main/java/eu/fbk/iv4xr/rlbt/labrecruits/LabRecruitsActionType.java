@@ -1,5 +1,6 @@
 package eu.fbk.iv4xr.rlbt.labrecruits;
 
+import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -11,8 +12,12 @@ import burlap.mdp.core.oo.state.ObjectInstance;
 import burlap.mdp.core.state.State;
 import eu.iv4xr.framework.mainConcepts.WorldEntity;
 
-public class LabRecruitsActionType implements ActionType {
+public class LabRecruitsActionType implements ActionType, Serializable {
 
+	/**
+	 * 
+	 */
+	private static final long serialVersionUID = -2485595856688888098L;
 	private String typeName = "entityAction";
 	public LabRecruitsActionType() {
 		// TODO Auto-generated constructor stub
