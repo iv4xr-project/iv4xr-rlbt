@@ -51,12 +51,19 @@ public class LabRecruitsRLEnvironment implements Environment {
 	private static LabRecruitsTestServer labRecruitsTestServer = null;
 	LabRecruitsTestAgent testAgent = null;
 	
+	
+	
+	
 	private LabRecruitsState currentState = null;
 	private double lastReward = 0;
 	
 	private int updateCycles = 0;
 	int MAX_CYCLES = 100;
+	
+	private String labRecruitesExeRootDir;
 	private String labRecruitsLevel;
+	private String labRecruitsLevelFolder;
+	
 	
 	/*set the testing goal entity and entity type*/
 	private String goalentity = "door3";
@@ -71,28 +78,51 @@ public class LabRecruitsRLEnvironment implements Environment {
 	private StateDistance stateDistance;
 	
 	public LabRecruitsRLEnvironment(LRConfiguration lrConfiguration, StateDistance stateDistance) {
+		
 		MAX_CYCLES = (int) lrConfiguration.getParameterValue("labrecruits.max_actions_per_episode");
-		labRecruitsLevel = (String) lrConfiguration.getParameterValue("labrecruits.level");
 		
 		goalentity =  (String) lrConfiguration.getParameterValue("labrecruits.target_entity_name");
 		goalentitystatus = (String) lrConfiguration.getParameterValue("labrecruits.target_entity_property_name");
-		
-		
-		goalentitytype = (String) lrConfiguration.getParameterValue("labrecruits.target_entity_type");
-		
+		goalentitytype = checkEntityType((String) lrConfiguration.getParameterValue("labrecruits.target_entity_type"));
 		agentName = (String) lrConfiguration.getParameterValue("labrecruits.agent_id");
+		
+		
+		labRecruitsLevel = (String) lrConfiguration.getParameterValue("labrecruits.level_name");
+		labRecruitsLevelFolder = (String) lrConfiguration.getParameterValue("labrecruits.level_folder");
+		labRecruitesExeRootDir = (String) lrConfiguration.getParameterValue("labrecruits.execution_folder");
+		USE_GRAPHICS = (Boolean) lrConfiguration.getParameterValue("labrecruits.use_graphics");
 		
 		this.stateDistance = stateDistance;
 	}
 	
+	private String checkEntityType(String eType) {
+		
+		if (eType.equalsIgnoreCase(LabEntity.DOOR)) {
+			return LabEntity.DOOR;
+		}else if (eType.equalsIgnoreCase(LabEntity.SWITCH)) {
+			return LabEntity.SWITCH;
+		}else if (eType.equalsIgnoreCase(LabEntity.GOAL)) {
+			return LabEntity.GOAL;
+		}else if (eType.equalsIgnoreCase(LabEntity.COLORSCREEN)) {
+			return LabEntity.COLORSCREEN;
+		}else if (eType.equalsIgnoreCase(LabEntity.FIREHAZARD)) {
+			return LabEntity.FIREHAZARD;
+		}else if (eType.equalsIgnoreCase(LabEntity.NPC)) {
+			return LabEntity.NPC;
+		}
+		throw new RuntimeException("Entity type "+eType+" not recognised");
+	}
+	
+	
+	
 	/*start RL environment*/
 	public void startAgentEnvironment () throws InterruptedException {
-		lastReward = 0;
-		updateCycles = 0;
+		//lastReward = 0;
+		//updateCycles = 0;
 		
 		startTestServer();
 
-		labRecruitsAgentEnvironment = new LabRecruitsEnvironment(new LabRecruitsConfig(labRecruitsLevel));
+		labRecruitsAgentEnvironment = new LabRecruitsEnvironment(new LabRecruitsConfig(labRecruitsLevel,labRecruitsLevelFolder));
 		labRecruitsAgentEnvironment.startSimulation();
 		
 		// create a test agent
@@ -168,7 +198,9 @@ public class LabRecruitsRLEnvironment implements Environment {
 
 	
 	private void startTestServer (){
-		String labRecruitesExeRootDir = System.getProperty("user.dir") ;
+		//String labRecruitesExeRootDir = System.getProperty("user.dir") ;
+		
+		
 		labRecruitsTestServer = new LabRecruitsTestServer(
 				USE_GRAPHICS,
 				Platform.PathToLabRecruitsExecutable(labRecruitesExeRootDir)); 

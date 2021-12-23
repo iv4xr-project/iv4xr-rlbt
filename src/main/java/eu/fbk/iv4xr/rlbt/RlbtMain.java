@@ -49,10 +49,10 @@ import org.apache.commons.lang3.EnumUtils;
 public class RlbtMain{
 
 	//TODO expose these parameters as command line options
-	static String level = "buttons_doors_1";	/*labrecruits level name*/
-	static int maxUpdateCycles = 300;			/*max update cycles*/
-	static int numOfEpisodes =3;				/*number of episodes for Q-learning training*/
-	static boolean testTrainedAgent = false;
+//	static String level = "buttons_doors_1";	/*labrecruits level name*/
+//	static int maxUpdateCycles = 300;			/*max update cycles*/
+//	static int numOfEpisodes =3;				/*number of episodes for Q-learning training*/
+//	static boolean testTrainedAgent = false;
 
 	public enum BurlapAlgorithm {
 		QLearning
@@ -183,8 +183,9 @@ public class RlbtMain{
 		/*------------Save------------------------*/
 		long estimatedTime = System.currentTimeMillis() - startTime;
 		System.out.println("Time - Training : "+estimatedTime);
-		agent.serializeQTable((String)burlapConfiguration.getParameterValue("burlap.qlearning.out_qtable"));
 		agent.printFinalQtable();
+		agent.serializeQTable((String)burlapConfiguration.getParameterValue("burlap.qlearning.out_qtable"));
+		
 		labRecruitsRlEnvironment.stopAgentEnvironment();  /*stop RL agent environment*/
 	}
 	
@@ -237,7 +238,7 @@ public class RlbtMain{
 		/*initialize RL environment*/
 		LabRecruitsRLEnvironment labRecruitsRlEnvironment = new LabRecruitsRLEnvironment(lrConfiguration, new JaccardDistance());
 		
-		DPrint.ul("Initializing domain. Opening level :"+level);
+		System.out.println("Initializing domain. Opening level :"+lrConfiguration.getParameterValue("abrecruits.level_name"));
 		DomainGenerator lrDomainGenerator = new LabRecruitsDomainGenerator();
 		final SADomain domain = (SADomain) lrDomainGenerator.generateDomain();
 		

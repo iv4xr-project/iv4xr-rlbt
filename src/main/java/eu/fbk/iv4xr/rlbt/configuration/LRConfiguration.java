@@ -7,8 +7,11 @@ public class LRConfiguration extends Configuration{
 	
 	public LRConfiguration(){
 		parameters = new LinkedHashMap<String, Object>();
-		parameters.put("labrecruits.level", "buttons_doors_1");
+		parameters.put("labrecruits.level_name", "buttons_doors_1");
+		parameters.put("labrecruits.level_folder", "src/test/resources/levels/");
+		
 		parameters.put("labrecruits.execution_folder", ".");
+		
 		parameters.put("labrecruits.agent_id", "agent1");
 		parameters.put("labrecruits.use_graphics",true);
 		parameters.put("labrecruits.max_ticks_per_action",100);
