@@ -241,14 +241,14 @@ public class RlbtMain{
 		DomainGenerator lrDomainGenerator = new LabRecruitsDomainGenerator();
 		final SADomain domain = (SADomain) lrDomainGenerator.generateDomain();
 		
-		final double qinit = 0;   
-		final double lr = 0.85;
-				
 		/*create Reinforcement Learning (Q-learning) agent*/
-		QLearningRL agent = new QLearningRL(domain, 0.99, new RlbtHashableStateFactory(), qinit, lr);
+		QLearningRL agent = new QLearningRL(domain, 
+				(double)burlapConfiguration.getParameterValue("burlap.qlearning.gamma"), 
+				new RlbtHashableStateFactory(), 
+				(double)burlapConfiguration.getParameterValue("burlap.qlearning.qinit"), 
+				(double)burlapConfiguration.getParameterValue("burlap.qlearning.lr"));
 		long startTime = System.currentTimeMillis();
 		
-//		agent.loadQTable(qTablePath);
 		agent.deserializeQTable((String)burlapConfiguration.getParameterValue("burlap.qlearning.out_qtable"));
 		agent.printFinalQtable();
 		agent.testQLearingAgent(labRecruitsRlEnvironment, 1900);

@@ -72,8 +72,8 @@ public abstract class Configuration {
 			if (parametersToIgnore != null) {
 				if (parametersToIgnore.contains((String) par)) continue;
 			}
-			// skip comments
-			if (((String) par).charAt(0) == '#') continue;
+			// skip comments, should already be handled by Property
+//			if (((String) par).charAt(0) == '#') continue;
 			Object object = fileConfiguration.get(par);
 			setParameterValue = this.setParameterValue((String)par, object);
 			if (!setParameterValue) {
