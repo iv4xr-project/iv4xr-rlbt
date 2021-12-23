@@ -1,0 +1,207 @@
+? &id004 !!eu.fbk.iv4xr.rlbt.labrecruits.RlbtSimpleHashableState
+  s: &id003 !!eu.fbk.iv4xr.rlbt.labrecruits.LabRecruitsState
+    objectsByClass:
+      world.LabEntity:
+      - &id001 !!eu.fbk.iv4xr.rlbt.labrecruits.LabRecruitsEntityObject {}
+      - &id002 !!eu.fbk.iv4xr.rlbt.labrecruits.LabRecruitsEntityObject {}
+    objectsMap:
+      FireHazard@<1.0,0.0,1.0>: *id001
+      door1: *id002
+: !!burlap.behavior.singleagent.learning.tdmethods.QLearningStateNode
+  qEntry:
+  - a: !!eu.fbk.iv4xr.rlbt.labrecruits.LabRecruitsAction
+      actionId: FireHazard@<1.0,0.0,1.0>
+      interactedEntity: !!world.LabEntity
+        dynamic: true
+        elements: {}
+        extent: {x: 0.25, y: 0.25, z: 0.25}
+        id: FireHazard@<1.0,0.0,1.0>
+        lastStutterTimestamp: -1
+        position: {x: 1.0, y: 0.375, z: 1.0}
+        properties: {}
+        timestamp: 0
+        type: FireHazard
+        velocity: null
+    q: -0.25
+    s: *id003
+  - a: !!eu.fbk.iv4xr.rlbt.labrecruits.LabRecruitsAction
+      actionId: door1
+      interactedEntity: &id011 !!world.LabEntity
+        dynamic: true
+        elements: {}
+        extent: {x: 0.75000036, y: 1.0000002, z: 0.15000015}
+        id: door1
+        lastStutterTimestamp: 0
+        position: {x: 2.0000002, y: 1.0000002, z: 3.55}
+        properties: {isOpen: false}
+        timestamp: 0
+        type: Door
+        velocity: null
+    q: 0.012423628916015625
+    s: *id003
+  s: *id004
+? &id012 !!eu.fbk.iv4xr.rlbt.labrecruits.RlbtSimpleHashableState
+  s: &id010 !!eu.fbk.iv4xr.rlbt.labrecruits.LabRecruitsState
+    objectsByClass:
+      world.LabEntity:
+      - &id005 !!eu.fbk.iv4xr.rlbt.labrecruits.LabRecruitsEntityObject {}
+      - &id006 !!eu.fbk.iv4xr.rlbt.labrecruits.LabRecruitsEntityObject {}
+      - &id007 !!eu.fbk.iv4xr.rlbt.labrecruits.LabRecruitsEntityObject {}
+      - &id008 !!eu.fbk.iv4xr.rlbt.labrecruits.LabRecruitsEntityObject {}
+      - &id009 !!eu.fbk.iv4xr.rlbt.labrecruits.LabRecruitsEntityObject {}
+    objectsMap:
+      door3: *id005
+      button2: *id006
+      FireHazard@<1.0,0.0,1.0>: *id007
+      door1: *id008
+      button1: *id009
+: !!burlap.behavior.singleagent.learning.tdmethods.QLearningStateNode
+  qEntry:
+  - a: !!eu.fbk.iv4xr.rlbt.labrecruits.LabRecruitsAction
+      actionId: door3
+      interactedEntity: &id016 !!world.LabEntity
+        dynamic: true
+        elements: {}
+        extent: {x: 0.14999995, y: 1.0000002, z: 0.75000024}
+        id: door3
+        lastStutterTimestamp: 1269
+        position: {x: 10.45, y: 1.0000002, z: 4.0}
+        properties: {isOpen: false}
+        timestamp: 0
+        type: Door
+        velocity: null
+    q: 0.0
+    s: *id010
+  - a: !!eu.fbk.iv4xr.rlbt.labrecruits.LabRecruitsAction
+      actionId: button2
+      interactedEntity: !!world.LabEntity
+        dynamic: true
+        elements: {}
+        extent: {x: 0.5, y: 0.15, z: 0.5}
+        id: button2
+        lastStutterTimestamp: 1387
+        position: {x: 4.0, y: 0.08, z: 2.0}
+        properties: {isOn: false}
+        timestamp: 1635
+        type: Switch
+        velocity: null
+    q: -0.13624870976843112
+    s: *id010
+  - a: !!eu.fbk.iv4xr.rlbt.labrecruits.LabRecruitsAction
+      actionId: FireHazard@<1.0,0.0,1.0>
+      interactedEntity: &id018 !!world.LabEntity
+        dynamic: true
+        elements: {}
+        extent: {x: 0.25, y: 0.25, z: 0.25}
+        id: FireHazard@<1.0,0.0,1.0>
+        lastStutterTimestamp: -1
+        position: {x: 1.0, y: 0.375, z: 1.0}
+        properties: {}
+        timestamp: 0
+        type: FireHazard
+        velocity: null
+    q: 0.0
+    s: *id010
+  - a: !!eu.fbk.iv4xr.rlbt.labrecruits.LabRecruitsAction
+      actionId: door1
+      interactedEntity: *id011
+    q: 0.0
+    s: *id010
+  - a: !!eu.fbk.iv4xr.rlbt.labrecruits.LabRecruitsAction
+      actionId: button1
+      interactedEntity: &id026 !!world.LabEntity
+        dynamic: true
+        elements: {}
+        extent: {x: 0.5, y: 0.15, z: 0.5}
+        id: button1
+        lastStutterTimestamp: 1452
+        position: {x: 9.0, y: 0.08, z: 1.0}
+        properties: {isOn: false}
+        timestamp: 0
+        type: Switch
+        velocity: null
+    q: 25.0
+    s: *id010
+  s: *id012
+? &id019 !!eu.fbk.iv4xr.rlbt.labrecruits.RlbtSimpleHashableState
+  s: &id017 !!eu.fbk.iv4xr.rlbt.labrecruits.LabRecruitsState
+    objectsByClass:
+      world.LabEntity:
+      - &id013 !!eu.fbk.iv4xr.rlbt.labrecruits.LabRecruitsEntityObject {}
+      - &id014 !!eu.fbk.iv4xr.rlbt.labrecruits.LabRecruitsEntityObject {}
+      - &id015 !!eu.fbk.iv4xr.rlbt.labrecruits.LabRecruitsEntityObject {}
+    objectsMap:
+      door3: *id013
+      FireHazard@<1.0,0.0,1.0>: *id014
+      door1: *id015
+: !!burlap.behavior.singleagent.learning.tdmethods.QLearningStateNode
+  qEntry:
+  - a: !!eu.fbk.iv4xr.rlbt.labrecruits.LabRecruitsAction
+      actionId: door3
+      interactedEntity: *id016
+    q: 0.05693943004515655
+    s: *id017
+  - a: !!eu.fbk.iv4xr.rlbt.labrecruits.LabRecruitsAction
+      actionId: FireHazard@<1.0,0.0,1.0>
+      interactedEntity: *id018
+    q: 0.0
+    s: *id017
+  - a: !!eu.fbk.iv4xr.rlbt.labrecruits.LabRecruitsAction
+      actionId: door1
+      interactedEntity: *id011
+    q: -0.25
+    s: *id017
+  s: *id019
+? &id027 !!eu.fbk.iv4xr.rlbt.labrecruits.RlbtSimpleHashableState
+  s: &id025 !!eu.fbk.iv4xr.rlbt.labrecruits.LabRecruitsState
+    objectsByClass:
+      world.LabEntity:
+      - &id020 !!eu.fbk.iv4xr.rlbt.labrecruits.LabRecruitsEntityObject {}
+      - &id021 !!eu.fbk.iv4xr.rlbt.labrecruits.LabRecruitsEntityObject {}
+      - &id022 !!eu.fbk.iv4xr.rlbt.labrecruits.LabRecruitsEntityObject {}
+      - &id023 !!eu.fbk.iv4xr.rlbt.labrecruits.LabRecruitsEntityObject {}
+      - &id024 !!eu.fbk.iv4xr.rlbt.labrecruits.LabRecruitsEntityObject {}
+    objectsMap:
+      door3: *id020
+      button2: *id021
+      FireHazard@<1.0,0.0,1.0>: *id022
+      door1: *id023
+      button1: *id024
+: !!burlap.behavior.singleagent.learning.tdmethods.QLearningStateNode
+  qEntry:
+  - a: !!eu.fbk.iv4xr.rlbt.labrecruits.LabRecruitsAction
+      actionId: door3
+      interactedEntity: *id016
+    q: 0.0
+    s: *id025
+  - a: !!eu.fbk.iv4xr.rlbt.labrecruits.LabRecruitsAction
+      actionId: button2
+      interactedEntity: !!world.LabEntity
+        dynamic: true
+        elements: {}
+        extent: {x: 0.5, y: 0.15, z: 0.5}
+        id: button2
+        lastStutterTimestamp: 0
+        position: {x: 4.0, y: 0.08, z: 2.0}
+        properties: {isOn: true}
+        timestamp: 1706
+        type: Switch
+        velocity: null
+    q: 0.16754688781288957
+    s: *id025
+  - a: !!eu.fbk.iv4xr.rlbt.labrecruits.LabRecruitsAction
+      actionId: FireHazard@<1.0,0.0,1.0>
+      interactedEntity: *id018
+    q: 0.0
+    s: *id025
+  - a: !!eu.fbk.iv4xr.rlbt.labrecruits.LabRecruitsAction
+      actionId: door1
+      interactedEntity: *id011
+    q: 0.0
+    s: *id025
+  - a: !!eu.fbk.iv4xr.rlbt.labrecruits.LabRecruitsAction
+      actionId: button1
+      interactedEntity: *id026
+    q: 0.0
+    s: *id025
+  s: *id027
