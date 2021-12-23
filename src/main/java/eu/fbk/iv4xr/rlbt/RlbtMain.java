@@ -238,7 +238,7 @@ public class RlbtMain{
 		/*initialize RL environment*/
 		LabRecruitsRLEnvironment labRecruitsRlEnvironment = new LabRecruitsRLEnvironment(lrConfiguration, new JaccardDistance());
 		
-		System.out.println("Initializing domain. Opening level :"+lrConfiguration.getParameterValue("abrecruits.level_name"));
+		System.out.println("Initializing domain. Opening level :"+lrConfiguration.getParameterValue("labrecruits.level_name"));
 		DomainGenerator lrDomainGenerator = new LabRecruitsDomainGenerator();
 		final SADomain domain = (SADomain) lrDomainGenerator.generateDomain();
 		
