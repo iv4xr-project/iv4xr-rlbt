@@ -22,6 +22,7 @@ import burlap.mdp.singleagent.environment.EnvironmentOutcome;
 import burlap.statehashing.HashableState;
 import environments.LabRecruitsEnvironment;
 import eu.fbk.iv4xr.rlbt.QLearningRL;
+import eu.fbk.iv4xr.rlbt.configuration.LRConfiguration;
 import eu.fbk.iv4xr.rlbt.distance.StateDistance;
 import eu.fbk.iv4xr.rlbt.labrecruits.distance.JaccardDistance;
 import eu.iv4xr.framework.mainConcepts.TestDataCollector;
@@ -44,7 +45,7 @@ import environments.LabRecruitsConfig;
 public class LabRecruitsRLEnvironment implements Environment {
 
 	
-	public static boolean USE_GRAPHICS = true;     /*for running Labrecruit game with graphic*/
+	public static boolean USE_GRAPHICS = false;     /*for running Labrecruit game with graphic*/
     
 	private LabRecruitsEnvironment labRecruitsAgentEnvironment = null; 
 	private static LabRecruitsTestServer labRecruitsTestServer = null;
@@ -62,14 +63,25 @@ public class LabRecruitsRLEnvironment implements Environment {
 	private String goalentitytype = LabEntity.DOOR;
 	private String goalentitystatus = "isOpen"; // for a door, "isOn" for a button
 	
+	private String agentName = "agent1";
+	
 	//store visited states from environment in an episode
 	HashMap<String, Integer> visitedStates = new HashMap<String, Integer>();
 
 	private StateDistance stateDistance;
 	
-	public LabRecruitsRLEnvironment(int maxUpdateCycles, String level, StateDistance stateDistance) {
-		MAX_CYCLES = maxUpdateCycles;
-		labRecruitsLevel = level;
+	public LabRecruitsRLEnvironment(LRConfiguration lrConfiguration, StateDistance stateDistance) {
+		MAX_CYCLES = (int) lrConfiguration.getParameterValue("labrecruits.max_actions_per_episode");
+		labRecruitsLevel = (String) lrConfiguration.getParameterValue("labrecruits.level");
+		
+		goalentity =  (String) lrConfiguration.getParameterValue("labrecruits.target_entity_name");
+		goalentitystatus = (String) lrConfiguration.getParameterValue("labrecruits.target_entity_property_name");
+		
+		
+		goalentitytype = (String) lrConfiguration.getParameterValue("labrecruits.target_entity_type");
+		
+		agentName = (String) lrConfiguration.getParameterValue("labrecruits.agent_id");
+		
 		this.stateDistance = stateDistance;
 	}
 	
@@ -84,7 +96,7 @@ public class LabRecruitsRLEnvironment implements Environment {
 		labRecruitsAgentEnvironment.startSimulation();
 		
 		// create a test agent
-		testAgent = new LabRecruitsTestAgent("agent1") // matches the ID in the CSV file
+		testAgent = new LabRecruitsTestAgent(agentName) // matches the ID in the CSV file
 				. attachState(new BeliefState())
 				. attachEnvironment(labRecruitsAgentEnvironment);
 		
