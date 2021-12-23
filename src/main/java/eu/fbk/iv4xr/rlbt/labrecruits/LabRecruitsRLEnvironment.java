@@ -57,6 +57,7 @@ public class LabRecruitsRLEnvironment implements Environment {
 	private int updateCycles = 0;
 	int MAX_CYCLES = 100;
 	private String labRecruitsLevel;
+	private int maxTicksPerAction = 100;
 	
 	/*set the testing goal entity and entity type*/
 	private String goalentity = "door3";
@@ -71,6 +72,7 @@ public class LabRecruitsRLEnvironment implements Environment {
 	private StateDistance stateDistance;
 	
 	public LabRecruitsRLEnvironment(LRConfiguration lrConfiguration, StateDistance stateDistance) {
+		maxTicksPerAction = (int)lrConfiguration.getParameterValue("labrecruits.max_ticks_per_action");
 		MAX_CYCLES = (int) lrConfiguration.getParameterValue("labrecruits.max_actions_per_episode");
 		labRecruitsLevel = (String) lrConfiguration.getParameterValue("labrecruits.level");
 		
@@ -327,7 +329,7 @@ public class LabRecruitsRLEnvironment implements Environment {
 	 */
 	private void doAction (GoalStructure goal) {
 		testAgent.setGoal(goal);
-		int maxTicks = 100;	// let the agent run until the current goal is either succeeds or fails?!
+		int maxTicks = maxTicksPerAction;	// let the agent run until the current goal is either succeeds or fails?!
 		int tickCounter = 0;
 		while (tickCounter < maxTicks && goal.getStatus().inProgress()) {
 			try {
