@@ -27,6 +27,7 @@ import java.io.FileNotFoundException;
 import java.io.BufferedReader;
 import java.io.FileReader;
 import java.io.IOException;
+import java.io.PrintStream;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -183,9 +184,10 @@ public class RlbtMain{
 		/*------------Save------------------------*/
 		long estimatedTime = System.currentTimeMillis() - startTime;
 		System.out.println("Time - Training : "+estimatedTime);
-		agent.printFinalQtable();
-		agent.serializeQTable((String)burlapConfiguration.getParameterValue("burlap.qlearning.out_qtable"));
-		
+		agent.printFinalQtable(System.out);
+		String qtableOutputFile = (String)burlapConfiguration.getParameterValue("burlap.qlearning.out_qtable");
+		agent.serializeQTable(qtableOutputFile);
+		agent.printFinalQtable(new PrintStream(qtableOutputFile + ".txt"));
 		labRecruitsRlEnvironment.stopAgentEnvironment();  /*stop RL agent environment*/
 	}
 	
@@ -251,7 +253,7 @@ public class RlbtMain{
 		long startTime = System.currentTimeMillis();
 		
 		agent.deserializeQTable((String)burlapConfiguration.getParameterValue("burlap.qlearning.out_qtable"));
-		agent.printFinalQtable();
+		agent.printFinalQtable(System.out);
 		agent.testQLearingAgent(labRecruitsRlEnvironment, 1900);
 		
 		long estimatedTime = System.currentTimeMillis() - startTime;

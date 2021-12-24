@@ -68,6 +68,7 @@ public class RlbtSimpleHashableState extends IISimpleHashableState implements Se
 //		if (!entity1.dynamic) return true ;
 		switch(entity1.type) {
 		  case LabEntity.FIREHAZARD : return true;
+		  case LabEntity.GOAL : return true;
 		  case LabEntity.DOOR   : return entity1.getBooleanProperty("isOpen") == entity2.getBooleanProperty("isOpen") ;
 		  case LabEntity.SWITCH : return entity1.getBooleanProperty("isOn") == entity2.getBooleanProperty("isOn") ;
 		  case LabEntity.COLORSCREEN : return entity1.getProperty("color").equals(entity2.getProperty("color")) ;

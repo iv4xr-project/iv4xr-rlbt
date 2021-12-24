@@ -625,23 +625,22 @@ public class QLearningRL extends MDPSolver implements QProvider, LearningAgent, 
 		return ea;
 	}
 	
-	public void printFinalQtable() {
-		System.out.println("\n\n=====================Q-Table========================================");
-		System.out.println("Qtable size = "+this.qFunction.keySet().size());
-		System.out.println("----------------------------------------------------------------------------");
+	public void printFinalQtable(PrintStream printStream) {
+		printStream.println("\n\n=====================Q-Table========================================");
+		printStream.println("Qtable size = "+this.qFunction.keySet().size());
+		printStream.println("----------------------------------------------------------------------------");
 		for (HashableState key:this.qFunction.keySet()){
 			QLearningStateNode node = qFunction.get(key);
-			System.out.println("State = "+node.s.s());
-			System.out.println("Number of Q value entry= "+ node.qEntry.size());
+			printStream.println("State = "+node.s.s());
+			printStream.println("Number of Q value entry= "+ node.qEntry.size());
 			for (int i=0; i<node.qEntry.size();i++) {
-				System.out.print("action: "+node.qEntry.get(i).a.actionName());
-				//System.out.print("states : "+node.qEntry.get(i).s);
-				System.out.print("	value: "+node.qEntry.get(i).q);	
-				System.out.print("\n");
+				printStream.print("action: "+node.qEntry.get(i).a.actionName());
+				printStream.print("	value: "+node.qEntry.get(i).q);	
+				printStream.print("\n");
 				}
 			}
-		System.out.println("----------------------------------------------------------------------------");
-		}  // end of the function
+		printStream.println("----------------------------------------------------------------------------");
+	}  // end of the function
 
 	
 	private void printQtable(HashableState curState) {

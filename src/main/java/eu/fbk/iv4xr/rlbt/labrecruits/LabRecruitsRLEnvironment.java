@@ -20,11 +20,12 @@ import burlap.mdp.core.state.State;
 import burlap.mdp.singleagent.environment.Environment;
 import burlap.mdp.singleagent.environment.EnvironmentOutcome;
 import burlap.statehashing.HashableState;
+import environments.LabRecruitsConfig;
 import environments.LabRecruitsEnvironment;
-import eu.fbk.iv4xr.rlbt.QLearningRL;
 import eu.fbk.iv4xr.rlbt.configuration.LRConfiguration;
 import eu.fbk.iv4xr.rlbt.distance.StateDistance;
-import eu.fbk.iv4xr.rlbt.labrecruits.distance.JaccardDistance;
+import eu.fbk.iv4xr.rlbt.labrecruits.rewardfunctions.GoalOrientedRewardFunction;
+import eu.fbk.iv4xr.rlbt.rewardfunction.RlbtRewardFunction;
 import eu.iv4xr.framework.mainConcepts.TestDataCollector;
 import eu.iv4xr.framework.mainConcepts.WorldEntity;
 import eu.iv4xr.framework.spatial.Vec3;
@@ -34,8 +35,6 @@ import nl.uu.cs.aplib.mainConcepts.Goal;
 import nl.uu.cs.aplib.mainConcepts.GoalStructure;
 import world.BeliefState;
 import world.LabEntity;
-import nl.uu.cs.aplib.mainConcepts.Tactic;
-import environments.LabRecruitsConfig;
 
 
 /**
@@ -73,10 +72,7 @@ public class LabRecruitsRLEnvironment implements Environment {
 	
 	private String agentName = "agent1";
 	
-	//store visited states from environment in an episode
-	HashMap<String, Integer> visitedStates = new HashMap<String, Integer>();
-
-	private StateDistance stateDistance;
+	private RlbtRewardFunction rewardFunction;
 	
 	public LabRecruitsRLEnvironment(LRConfiguration lrConfiguration, StateDistance stateDistance) {
 		maxTicksPerAction = (int)lrConfiguration.getParameterValue("labrecruits.max_ticks_per_action");
@@ -93,7 +89,7 @@ public class LabRecruitsRLEnvironment implements Environment {
 		labRecruitesExeRootDir = (String) lrConfiguration.getParameterValue("labrecruits.execution_folder");
 		USE_GRAPHICS = (Boolean) lrConfiguration.getParameterValue("labrecruits.use_graphics");
 		
-		this.stateDistance = stateDistance;
+		this.rewardFunction = new GoalOrientedRewardFunction(stateDistance);
 	}
 	
 	private String checkEntityType(String eType) {
@@ -123,7 +119,9 @@ public class LabRecruitsRLEnvironment implements Environment {
 		
 		startTestServer();
 
-		labRecruitsAgentEnvironment = new LabRecruitsEnvironment(new LabRecruitsConfig(labRecruitsLevel,labRecruitsLevelFolder));
+		LabRecruitsConfig gameConfig = new LabRecruitsConfig(labRecruitsLevel,labRecruitsLevelFolder);
+		gameConfig.host = "localhost"; // "192.168.29.120";
+		labRecruitsAgentEnvironment = new LabRecruitsEnvironment(gameConfig);
 		labRecruitsAgentEnvironment.startSimulation();
 		
 		// create a test agent
@@ -189,6 +187,8 @@ public class LabRecruitsRLEnvironment implements Environment {
 	        		entityId, 
 	        		entityId + " should be open", 
 	        		(WorldEntity e) -> e.getBooleanProperty("isOpen")));
+		} else if (entityType == LabEntity.GOAL) {
+			goal = GoalLib.entityInCloseRange(entityId);
 		} else {
 			// other kind of entity, for example fireHazard, not to interact, do nothing only observe
 			goal = observe();// 
@@ -409,24 +409,6 @@ public class LabRecruitsRLEnvironment implements Environment {
 	}
 	
 
-	/** 
-	 * Check the memory of visited states and returns the number of times this state is visited
-	 * 
-	 */
-	private int getNumofStateOccurance(String state2) {
-		int numoftimesvisited =0;
-		if (visitedStates.containsKey(state2.toString())){
-			numoftimesvisited = visitedStates.get(state2.toString());
-			visitedStates.put(state2.toString(), (numoftimesvisited+1));
-			return numoftimesvisited;
-			}
-		else {  // make a new entry for this state
-			visitedStates.put(state2.toString(), 1);
-			return numoftimesvisited;
-			}
-		}
-
-	
 	/**
 	 * Compute the reward for the given action.
 	 * 	- if current state is the final state (winning state), give maximum reward
@@ -445,48 +427,8 @@ public class LabRecruitsRLEnvironment implements Environment {
 			reward = 100;
 			//System.out.println("Action  = "+action.actionName()+"  Final State, reward = "+reward);
 		} else {
-		
-			// check if the agent was stuck, don't penalize it
-			if (testAgent.getState().isStuck()) {
-				reward = 0;			
-				//System.out.println("Action  = "+action.actionName()+"  Stuck , reward = "+reward);
-			} else {
-				//first - consider explored states- give reward for exploring a new state
-				double sim = stateDistance.distance(state1, state2); // getStatesSimilarityMeasures(state1,state2); 
-				double dissimilarity = (1-sim);
-				int stateOccurance = 0;
-				stateOccurance =  getNumofStateOccurance(state2.toString());
-				// give reward for exploring a new quite different state
-				if (dissimilarity >=0.2 && stateOccurance<5) {
-					reward = reward+ 1;//(dissimilarity*10);
-					//System.out.println("Action  = "+action.actionName()+" Dissimilarity and fewer State Occurance, reward = "+reward);
-				}
-				//give penalty for exploring same state 
-				if (stateOccurance>5)
-				{
-					reward = reward - 1;
-					//System.out.println("Action  = "+action.actionName()+"  State visited over threshold,  penalty = "+reward);
-				}
-				//System.out.println("dissimilarity = "+dissimilarity+"  statevisited = "+stateOccurance);
-				// second -  consider agent's movement - reward movement, penalize staying at the same position
-				List<Vec3> recentPositions = testAgent.getState().getRecentPositions();
-				if (recentPositions.size() >= 2) {//(recentPositions.size() >= 2) {
-					if (recentPositions.get(recentPositions.size()-1).equals(recentPositions.get(recentPositions.size()-2))) {
-						//reward = -1;
-						reward= reward-1;
-						//System.out.println("Action  = "+action.actionName()+"  agent moving around same position, penalty = "+reward);
-					} else {
-						reward = reward -0;
-						//System.out.println("Action  = "+action.actionName()+"  State visited over threshold,  penalty = "+reward);
-						//reward = 0;
-					}
-				}else {
-					// means did not move enough to have more recent positions
-					reward=reward-1;
-					//System.out.println("Action  = "+action.actionName()+" agent did not move enough to get more position,  penalty = "+reward);
-					//reward = -1;
-				}
-			}
+			reward = rewardFunction.reward(state1, action, state2, testAgent.getState());
+			
 			
 		}
 		System.out.println("-------------------------Reward : "+ reward);
@@ -504,15 +446,21 @@ public class LabRecruitsRLEnvironment implements Environment {
 	 * 	- if button, check if it's pushed
 	 * 	- if door, check if it's opened
 	 * @param state
-	 * @param doorId
+	 * @param entityId
 	 * @param booleanProperty
 	 * @return
 	 */
-	private boolean isFinal (State state, String doorId, String booleanProperty) {
+	private boolean isFinal (State state, String entityId, String booleanProperty) {
 		LabRecruitsState labRecruitsState = (LabRecruitsState)state;
-		if (labRecruitsState.getObjectsMap().containsKey(doorId)) {
-			LabRecruitsEntityObject entity = (LabRecruitsEntityObject) labRecruitsState.getObjectsMap().get(doorId);
-			return entity.getLabRecruitsEntity().getBooleanProperty(booleanProperty);
+		if (labRecruitsState.getObjectsMap().containsKey(entityId)) {
+			LabRecruitsEntityObject entity = (LabRecruitsEntityObject) labRecruitsState.getObjectsMap().get(entityId);
+			if (entity.getLabRecruitsEntity().type == LabEntity.GOAL) {
+				return testAgent.getState().distanceTo(entityId) <= 0.7;
+			}else if (entity.getLabRecruitsEntity().type == LabEntity.FIREHAZARD) {
+				return testAgent.getState().distanceTo(entityId) <= 0.5;
+			}else {
+				return entity.getLabRecruitsEntity().getBooleanProperty(booleanProperty);
+			}
 		}else {
 			return false;
 		}
