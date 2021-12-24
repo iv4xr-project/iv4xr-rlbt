@@ -66,9 +66,10 @@ public class LabRecruitsRLEnvironment implements Environment {
 	
 	
 	/*set the testing goal entity and entity type*/
-	private String goalentity = "door3";
-	private String goalentitytype = LabEntity.DOOR;
-	private String goalentitystatus = "isOpen"; // for a door, "isOn" for a button
+	private String goalEntity = "door3";
+	private String goalEntityType = LabEntity.DOOR;
+	private String goalEntityStatus = "isOpen"; // for a door, "isOn" for a button
+	private String goalEntityStatusValue = "true";
 	
 	private String agentName = "agent1";
 	
@@ -78,9 +79,10 @@ public class LabRecruitsRLEnvironment implements Environment {
 		maxTicksPerAction = (int)lrConfiguration.getParameterValue("labrecruits.max_ticks_per_action");
 		MAX_CYCLES = (int) lrConfiguration.getParameterValue("labrecruits.max_actions_per_episode");
 		
-		goalentity =  (String) lrConfiguration.getParameterValue("labrecruits.target_entity_name");
-		goalentitystatus = (String) lrConfiguration.getParameterValue("labrecruits.target_entity_property_name");
-		goalentitytype = checkEntityType((String) lrConfiguration.getParameterValue("labrecruits.target_entity_type"));
+		goalEntity =  (String) lrConfiguration.getParameterValue("labrecruits.target_entity_name");
+		goalEntityStatus = (String) lrConfiguration.getParameterValue("labrecruits.target_entity_property_name");
+		goalEntityType = checkEntityType((String) lrConfiguration.getParameterValue("labrecruits.target_entity_type"));
+		goalEntityStatusValue = String.valueOf(lrConfiguration.getParameterValue("labrecruits.target_entity_property_value"));
 		agentName = (String) lrConfiguration.getParameterValue("labrecruits.agent_id");
 		
 		
@@ -134,8 +136,8 @@ public class LabRecruitsRLEnvironment implements Environment {
 		
 		// set the testing goal here
 		//GoalStructure goal = getActionGoal("button1", LabEntity.SWITCH); //observe(); //getActionGoal("door1", LabEntity.DOOR); // getTestGoal ();
-		GoalStructure goal = getActionGoal(goalentity, goalentitytype);
-		DPrint.ul("Starting Simulation : \n  Goal : "+goalentity +"    "+goal.toString() +"   Entity type : "+goalentitytype+"  status : "+goal.getStatus());
+		GoalStructure goal = getActionGoal(goalEntity, goalEntityType);
+		DPrint.ul("Starting Simulation : \n  Goal : "+goalEntity +"    "+goal.toString() +"   Entity type : "+goalEntityType+"  status : "+goal.getStatus());
 		doAction(goal);
 
 		DPrint.ul ("========Getting current State from start agent Environment==================");
@@ -299,7 +301,7 @@ public class LabRecruitsRLEnvironment implements Environment {
 				
 		// set the testing goal here
 		//GoalStructure goal = getActionGoal("door3", LabEntity.DOOR);
-		GoalStructure goal = getActionGoal(goalentity, goalentitytype); //observe(); //getActionGoal("door1", LabEntity.DOOR); // getTestGoal ();
+		GoalStructure goal = getActionGoal(goalEntity, goalEntityType); //observe(); //getActionGoal("door1", LabEntity.DOOR); // getTestGoal ();
 		DPrint.ul("Testing Goal : "+goal.toString() +"  status : "+goal.getStatus());
 		doAction(goal);
 
@@ -437,32 +439,19 @@ public class LabRecruitsRLEnvironment implements Environment {
 
 //	@Override
 	public boolean isFinal(State state) {
-		return isFinal(state, goalentity, goalentitystatus);
-	}
-
-	
-	/**
-	 * helper function to decide whether or not a state is final (wining)
-	 * 	- if button, check if it's pushed
-	 * 	- if door, check if it's opened
-	 * @param state
-	 * @param entityId
-	 * @param booleanProperty
-	 * @return
-	 */
-	private boolean isFinal (State state, String entityId, String booleanProperty) {
 		LabRecruitsState labRecruitsState = (LabRecruitsState)state;
-		if (labRecruitsState.getObjectsMap().containsKey(entityId)) {
-			LabRecruitsEntityObject entity = (LabRecruitsEntityObject) labRecruitsState.getObjectsMap().get(entityId);
-			if (entity.getLabRecruitsEntity().type == LabEntity.GOAL) {
-				return testAgent.getState().distanceTo(entityId) <= 0.7;
-			}else if (entity.getLabRecruitsEntity().type == LabEntity.FIREHAZARD) {
-				return testAgent.getState().distanceTo(entityId) <= 0.5;
+		if (labRecruitsState.getObjectsMap().containsKey(goalEntity)) {
+			LabRecruitsEntityObject entity = (LabRecruitsEntityObject) labRecruitsState.getObjectsMap().get(goalEntity);
+			if (entity.getLabRecruitsEntity().type.contentEquals(LabEntity.GOAL)) {
+				return testAgent.getState().distanceTo(goalEntity) <= 0.7;
+			}else if (entity.getLabRecruitsEntity().type.contentEquals(LabEntity.FIREHAZARD)) {
+				return testAgent.getState().distanceTo(goalEntity) <= 0.5;
 			}else {
-				return entity.getLabRecruitsEntity().getBooleanProperty(booleanProperty);
+				return entity.getLabRecruitsEntity().getProperty(goalEntityStatus).toString().equalsIgnoreCase(goalEntityStatusValue); // .getBooleanProperty(booleanProperty);
 			}
 		}else {
 			return false;
 		}
 	}
+	
 }
