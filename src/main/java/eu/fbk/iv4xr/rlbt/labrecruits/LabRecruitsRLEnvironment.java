@@ -168,7 +168,7 @@ public class LabRecruitsRLEnvironment implements Environment {
 	 */
 	private GoalStructure getActionGoal (String entityId, String entityType) {
 		GoalStructure goal = null;
-		if (entityType == LabEntity.SWITCH) {
+		if (entityType.contentEquals(LabEntity.SWITCH)) {
 			goal = GoalLib.entityInteracted(entityId);
 			//System.out.println("In goal structure : entity is a button");
 			/*if (testAgent.getState().canInteract(entityId)) {
@@ -180,14 +180,14 @@ public class LabRecruitsRLEnvironment implements Environment {
 				goal = GoalLib.entityStateRefreshed(entityId);
 				//System.out.println("STATUS : BUTTON NOT INTERACTABLE");
 			}*/
-		} else if(entityType == LabEntity.DOOR) {
+		} else if(entityType.contentEquals(LabEntity.DOOR)) {
 			goal = SEQ (GoalLib.entityStateRefreshed(entityId),
 					GoalLib.entityInCloseRange(entityId),
 					GoalLib.entityInvariantChecked(testAgent,
 	        		entityId, 
 	        		entityId + " should be open", 
 	        		(WorldEntity e) -> e.getBooleanProperty("isOpen")));
-		} else if (entityType == LabEntity.GOAL) {
+		} else if (entityType.contentEquals(LabEntity.GOAL)) {
 			goal = GoalLib.entityInCloseRange(entityId);
 		} else {
 			// other kind of entity, for example fireHazard, not to interact, do nothing only observe
