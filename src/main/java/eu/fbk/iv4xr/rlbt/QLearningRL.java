@@ -82,7 +82,10 @@ public class QLearningRL extends MDPSolver implements QProvider, LearningAgent, 
 		this.qFunction = qFunction;
 	}
 
-
+	/**
+	 * Epsilon value (exploit-explore)
+	 */
+	protected double							 				epsilongr;
 	/**
 	 * The learning rate function used.
 	 */
@@ -245,6 +248,10 @@ public class QLearningRL extends MDPSolver implements QProvider, LearningAgent, 
 		this.QLInit(domain, gamma, hashingFactory, new ConstantValueFunction(qInit), learningRate, new EpsilonGreedy(this, 0.1), Integer.MAX_VALUE);
 	}
 
+	public QLearningRL(SADomain domain, double gamma, HashableStateFactory hashingFactory,
+			double qInit, double learningRate, double epsilonval) {
+		this.QLInit(domain, gamma, hashingFactory, new ConstantValueFunction(qInit), learningRate, new EpsilonGreedy(this, epsilonval), epsilonval, Integer.MAX_VALUE);
+	}
 
 	/**
 	 * Initializes Q-learning with 0.1 epsilon greedy policy, the same Q-value initialization everywhere. By default the agent will only save the last learning episode and a call to the {@link #planFromState(State)} method
@@ -332,7 +339,19 @@ public class QLearningRL extends MDPSolver implements QProvider, LearningAgent, 
 		
 	}
 
-
+	protected void QLInit(SADomain domain, double gamma, HashableStateFactory hashingFactory,
+			  QFunction qInitFunction, double learningRate, Policy learningPolicy, double epsilonval,int maxEpisodeSize){
+		this.solverInit(domain, gamma, hashingFactory);
+		this.qFunction = new HashMap<HashableState, QLearningStateNode>();
+		this.learningRate = new ConstantLR(learningRate);
+		this.learningPolicy = learningPolicy;
+		this.maxEpisodeSize = maxEpisodeSize;
+		this.qInitFunction = qInitFunction;
+		this.epsilongr= epsilonval;
+		
+		numEpisodesForPlanning = 1;
+		maxQChangeForPlanningTermination = 0.;
+}
 	/**
 	 * Sets the {@link RewardFunction}, {@link burlap.mdp.core.TerminalFunction},
 	 * and the number of simulated episodes to use for planning when
@@ -551,6 +570,7 @@ public class QLearningRL extends MDPSolver implements QProvider, LearningAgent, 
 	@Override
 	public Episode runLearningEpisode(Environment env) {
 		return this.runLearningEpisode(env, -1);
+		//return this.runLearningEpisode(env, 20);
 	}
 
 	
@@ -622,6 +642,12 @@ public class QLearningRL extends MDPSolver implements QProvider, LearningAgent, 
 			this.totalNumberOfSteps++;
 		}
 		//System.out.println("End of an episode");
+		System.out.println("Epsilon value = "+ this.epsilongr);
+		this.epsilongr = this.epsilongr*0.9;  // multiply with a value <1 to decay the epsilon value
+		System.out.println("Decay Epsilo Value : End of an episode = "+this.epsilongr);
+		//initialize learningpolicy with new reduced epsilon value in order to reduce exploration after each episode
+		this.learningPolicy= new EpsilonGreedy(this, this.epsilongr);
+		
 		return ea;
 	}
 	
