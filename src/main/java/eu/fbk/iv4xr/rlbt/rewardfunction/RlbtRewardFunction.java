@@ -13,4 +13,5 @@ import world.BeliefState;
  */
 public interface RlbtRewardFunction {
 	public double reward(State previousState, Action action, State currentState, BeliefState agentBeliefState);
+	public void resetStateBuffer();
 }
