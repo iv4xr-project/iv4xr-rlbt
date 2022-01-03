@@ -112,7 +112,11 @@ public class LabRecruitsRLEnvironment implements Environment {
 		throw new RuntimeException("Entity type "+eType+" not recognised");
 	}
 	
-	
+		
+	/*reset the state memory buffer*/
+	public void resetStateMemory() {
+		this.rewardFunction.resetStateBuffer();	
+	}
 	
 	/*start RL environment*/
 	public void startAgentEnvironment () throws InterruptedException {
