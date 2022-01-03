@@ -170,7 +170,8 @@ public class RlbtMain{
 				(double)burlapConfiguration.getParameterValue("burlap.qlearning.gamma"), 
 				new RlbtHashableStateFactory(), 
 				(double)burlapConfiguration.getParameterValue("burlap.qlearning.qinit"), 
-				(double)burlapConfiguration.getParameterValue("burlap.qlearning.lr"));
+				(double)burlapConfiguration.getParameterValue("burlap.qlearning.lr"),
+				(double)burlapConfiguration.getParameterValue("burlap.qlearning.epsilonval"));
 		
 		List<Episode> episodes = new ArrayList<Episode>(1000);	//list to store results from Q-learning episodes
 		long startTime = System.currentTimeMillis();
@@ -178,6 +179,7 @@ public class RlbtMain{
 		/*------------Training - start running episodes------------------------*/
 		labRecruitsRlEnvironment.startAgentEnvironment();
 		for(int i = 0; i < (int)burlapConfiguration.getParameterValue("burlap.num_of_episodes"); i++){
+			labRecruitsRlEnvironment.resetStateMemory();   // reset state buffer at the beginning of an episode
 			episodes.add(agent.runLearningEpisode(labRecruitsRlEnvironment));
 			labRecruitsRlEnvironment.resetEnvironment();  /*reset environment*/
 		}
