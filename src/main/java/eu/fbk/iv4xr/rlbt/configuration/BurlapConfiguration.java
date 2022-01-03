@@ -18,6 +18,7 @@ public class BurlapConfiguration extends Configuration{
 		parameters.put("burlap.qlearning.qinit",(double) 0);
 		parameters.put("burlap.qlearning.lr",(double) 0.85);
 		parameters.put("burlap.qlearning.gamma",(double) 0.85);
+		parameters.put("burlap.qlearning.epsilonval",(double) 0.1);
 		parameters.put("burlap.qlearning.out_qtable",System.getProperty("user.dir")+"/src/test/resources/output/qtable.yaml");
 		parameters.put("burlap.algorithm", "QLearning");
 	}
