@@ -21,13 +21,19 @@ public class GoalOrientedRewardFunction extends AbstractRlbtRewardFunction {
 
 	
 	//store visited states from environment in an episode
-	HashMap<String, Integer> visitedStates = new HashMap<String, Integer>();
+	HashMap<String, Integer> visitedStates = null;//new HashMap<String, Integer>();
+	int stateOccuranceThreshold =4;
 	
 	public GoalOrientedRewardFunction(StateDistance stateDistanceFunction) {
 		super(stateDistanceFunction);
 		
 	}
 	
+	/*reset the state memory buffer*/
+	@Override
+	public void resetStateBuffer() {
+		visitedStates = new HashMap<String, Integer>();		
+	}
 	
 	@Override
 	public double reward(State previousState, Action action, State currentState, BeliefState agentBeliefState) {
@@ -43,14 +49,14 @@ public class GoalOrientedRewardFunction extends AbstractRlbtRewardFunction {
 			int stateOccurance = 0;
 			stateOccurance =  getNumofStateOccurance(currentState.toString());
 			// give reward for exploring a new quite different state
-			if (dissimilarity >=0.2 && stateOccurance<5) {
-				reward = reward+ 1;//(dissimilarity*10);
+			if (dissimilarity >=0.2 && stateOccurance<=stateOccuranceThreshold) {
+				reward = reward+ (dissimilarity*10);
 				//System.out.println("Action  = "+action.actionName()+" Dissimilarity and fewer State Occurance, reward = "+reward);
 			}
 			//give penalty for exploring same state 
-			if (stateOccurance>5)
+			if (stateOccurance>stateOccuranceThreshold)
 			{
-				reward = reward - 1;
+				reward = reward - (dissimilarity*10);
 				//System.out.println("Action  = "+action.actionName()+"  State visited over threshold,  penalty = "+reward);
 			}
 			//System.out.println("dissimilarity = "+dissimilarity+"  statevisited = "+stateOccurance);
