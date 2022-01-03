@@ -46,5 +46,11 @@ public class AbstractRlbtRewardFunction implements RlbtRewardFunction {
 	public void setStateDistanceFunction(StateDistance stateDistanceFunction) {
 		this.stateDistanceFunction = stateDistanceFunction;
 	}
+	
+	@Override
+	public void resetStateBuffer() {
+		// TODO Auto-generated method stub
+		
+	}
 
 }
