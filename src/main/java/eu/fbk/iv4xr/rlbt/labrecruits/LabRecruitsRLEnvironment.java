@@ -7,8 +7,10 @@ import static nl.uu.cs.aplib.AplibEDSL.SEQ;
 import static nl.uu.cs.aplib.AplibEDSL.goal;
 
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import agents.LabRecruitsTestAgent;
 import agents.tactics.GoalLib;
@@ -230,14 +232,23 @@ public class LabRecruitsRLEnvironment implements Environment {
 	public State currentObservation() {		
 		LabRecruitsState currentState = new LabRecruitsState(false);
 		BeliefState beliefState = testAgent.getState();
+		Set<String> doorIds = new HashSet<>();
+		for (WorldEntity worldEntity : beliefState.knownEntities()){
+			if (worldEntity.type == "Door") // || worldEntity.type =="Switch")
+			{
+				doorIds.add(worldEntity.id);
+			}
+		}
 		
+		// refresh the state of every door in the agent's belief state
+		for (String doorId : doorIds){
+			GoalStructure goal = doEntityStateRefresh(doorId);
+			doAction(goal);
+		}
+		
+		// add the objects into the LR agent state to build the next state
 		for (WorldEntity worldEntity : beliefState.knownEntities()){
 			worldEntity.timestamp=0;
-			if (worldEntity.type == "Door" || worldEntity.type =="Switch")
-			{
-				GoalStructure goal = doEntityStateRefresh(worldEntity.id);
-				doAction(goal);
-			}
 			currentState.addObject(new LabRecruitsEntityObject(worldEntity));
 		}
 		DPrint.ul("Current Observation state of Agent  :"+ currentState.toString() );
@@ -246,7 +257,8 @@ public class LabRecruitsRLEnvironment implements Environment {
 
 	private GoalStructure doEntityStateRefresh (String entityId) {
 		GoalStructure goal = null;
-		goal = GoalLib.entityStateRefreshed(entityId);		
+		goal = SEQ(GoalLib.entityInCloseRange(entityId),
+				GoalLib.entityStateRefreshed(entityId));		
 		return goal;
 	}
 	
