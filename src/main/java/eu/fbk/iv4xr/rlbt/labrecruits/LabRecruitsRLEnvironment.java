@@ -233,12 +233,23 @@ public class LabRecruitsRLEnvironment implements Environment {
 		
 		for (WorldEntity worldEntity : beliefState.knownEntities()){
 			worldEntity.timestamp=0;
+			if (worldEntity.type == "Door" || worldEntity.type =="Switch")
+			{
+				GoalStructure goal = doEntityStateRefresh(worldEntity.id);
+				doAction(goal);
+			}
 			currentState.addObject(new LabRecruitsEntityObject(worldEntity));
 		}
 		DPrint.ul("Current Observation state of Agent  :"+ currentState.toString() );
 		return currentState;
 	}
 
+	private GoalStructure doEntityStateRefresh (String entityId) {
+		GoalStructure goal = null;
+		goal = GoalLib.entityStateRefreshed(entityId);		
+		return goal;
+	}
+	
 	@Override
 	public EnvironmentOutcome executeAction(Action a) {
 		DPrint.ul("Inside Execute an action  ------- : ");
