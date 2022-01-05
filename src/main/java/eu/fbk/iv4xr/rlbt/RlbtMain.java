@@ -256,6 +256,8 @@ public class RlbtMain{
 		
 		agent.deserializeQTable((String)burlapConfiguration.getParameterValue("burlap.qlearning.out_qtable"));
 		agent.printFinalQtable(System.out);
+		
+		labRecruitsRlEnvironment.resetStateMemory();   // reset state buffer at the beginning of an episode
 		agent.testQLearingAgent(labRecruitsRlEnvironment, 1900);
 		
 		long estimatedTime = System.currentTimeMillis() - startTime;
