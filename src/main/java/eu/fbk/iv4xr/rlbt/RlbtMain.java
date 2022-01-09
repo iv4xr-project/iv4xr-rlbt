@@ -4,34 +4,10 @@
 package eu.fbk.iv4xr.rlbt;
 
 
-import burlap.behavior.singleagent.auxiliary.performance.LearningAlgorithmExperimenter;
-import burlap.behavior.singleagent.auxiliary.performance.PerformanceMetric;
-import burlap.behavior.singleagent.auxiliary.performance.TrialMode;
-import burlap.behavior.singleagent.learning.LearningAgent;
-import burlap.behavior.singleagent.learning.LearningAgentFactory;
-import burlap.behavior.singleagent.learning.tdmethods.SarsaLam;
-import burlap.debugtools.DPrint;
-import burlap.mdp.auxiliary.DomainGenerator;
-import burlap.mdp.singleagent.SADomain;
-import burlap.statehashing.simple.SimpleHashableStateFactory;
-import eu.fbk.iv4xr.rlbt.configuration.BurlapConfiguration;
-import eu.fbk.iv4xr.rlbt.configuration.LRConfiguration;
-import eu.fbk.iv4xr.rlbt.labrecruits.LabRecruitsDomainGenerator;
-import eu.fbk.iv4xr.rlbt.labrecruits.LabRecruitsRLEnvironment;
-import eu.fbk.iv4xr.rlbt.labrecruits.RlbtHashableStateFactory;
-import eu.fbk.iv4xr.rlbt.labrecruits.distance.JaccardDistance;
-import eu.iv4xr.framework.extensions.ltl.LTL.Next;
-import burlap.behavior.singleagent.Episode;
-
 import java.io.FileNotFoundException;
-import java.io.BufferedReader;
-import java.io.FileReader;
-import java.io.IOException;
 import java.io.PrintStream;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
-import java.util.Properties;
 
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.CommandLineParser;
@@ -40,7 +16,16 @@ import org.apache.commons.cli.HelpFormatter;
 import org.apache.commons.cli.Option;
 import org.apache.commons.cli.Options;
 import org.apache.commons.cli.ParseException;
-import org.apache.commons.lang3.EnumUtils;
+
+import burlap.behavior.singleagent.Episode;
+import burlap.mdp.auxiliary.DomainGenerator;
+import burlap.mdp.singleagent.SADomain;
+import eu.fbk.iv4xr.rlbt.configuration.BurlapConfiguration;
+import eu.fbk.iv4xr.rlbt.configuration.LRConfiguration;
+import eu.fbk.iv4xr.rlbt.labrecruits.LabRecruitsDomainGenerator;
+import eu.fbk.iv4xr.rlbt.labrecruits.LabRecruitsRLEnvironment;
+import eu.fbk.iv4xr.rlbt.labrecruits.RlbtHashableStateFactory;
+import eu.fbk.iv4xr.rlbt.labrecruits.distance.JaccardDistance;
 
 /**
  * @author kifetew
@@ -49,16 +34,14 @@ import org.apache.commons.lang3.EnumUtils;
 
 public class RlbtMain{
 
-	//TODO expose these parameters as command line options
-//	static String level = "buttons_doors_1";	/*labrecruits level name*/
-//	static int maxUpdateCycles = 300;			/*max update cycles*/
-//	static int numOfEpisodes =3;				/*number of episodes for Q-learning training*/
-//	static boolean testTrainedAgent = false;
-
 	public enum BurlapAlgorithm {
 		QLearning
 	}
 
+	public enum SearchMode {
+		GoalOriented, CoverageOriented
+	}
+	
 	// Predefined configuration file
 	static String currentDir = System.getProperty("user.dir");
 	static String burlapConfigFile =  currentDir+"/src/test/resources/configurations/burlap_test.config";
@@ -67,97 +50,6 @@ public class RlbtMain{
 	// Configurations
 	static BurlapConfiguration burlapConfiguration = new BurlapConfiguration();
 	static LRConfiguration lrConfiguration = new LRConfiguration();
-
-
-	
-//	private static void labRecruitsExample() throws InterruptedException {
-//		LabRecruitsRLEnvironment labRecruitsRlEnvironment = new LabRecruitsRLEnvironment(burlap_maxUpdateCycles, labrecruits_level, new JaccardDistance());
-//		labRecruitsRlEnvironment.startAgentEnvironment();
-//				
-//		DomainGenerator lrDomainGenerator = new LabRecruitsDomainGenerator();
-//		final SADomain domain = (SADomain) lrDomainGenerator.generateDomain();
-//
-//		final double qinit = 0;
-//		final double lr = 0.85;
-//		LearningAgentFactory qLearningFactory = new LearningAgentFactory() {
-//
-//			public String getAgentName() {
-//				return "Q-Learning";
-//			}
-//
-//
-//			public LearningAgent generateAgent() {
-//				return new QLearningRL(domain, 0.99, new SimpleHashableStateFactory(), qinit, lr);
-//			}
-//		};
-//		
-//		LearningAgentFactory sarsaLamLearningFactory = new LearningAgentFactory() {
-//
-//			public String getAgentName() {
-//				return "SARSA";
-//			}
-//
-//
-//			public LearningAgent generateAgent() {
-//				return new SarsaLam(domain, 0.99, new SimpleHashableStateFactory(), 0.0, 0.1, .1);
-//			}
-//		};
-//		LearningAgentFactory[] learningAgentFactories = {sarsaLamLearningFactory, qLearningFactory};
-//		LearningAlgorithmExperimenter exp = new LearningAlgorithmExperimenter(labRecruitsRlEnvironment, 10, 10, false, learningAgentFactories  );
-//		exp.setUpPlottingConfiguration(500, 300, 2, 800, TrialMode.MOST_RECENT_AND_AVERAGE, PerformanceMetric.CUMULATIVE_REWARD_PER_EPISODE);
-//
-//		exp.startExperiment();
-//		String expData = "expdata.csv";
-//		exp.writeStepAndEpisodeDataToCSV(expData);
-//		
-//		labRecruitsRlEnvironment.stopAgentEnvironment();
-//	}
-
-	
-//	/**************************************************************************************************
-//	 * Reinforcement Learning - Q-Learning testing- by Raihana
-//	 * @throws FileNotFoundException 
-//	 **************************************************************************************************/
-//
-//	private static void labrecruitRLEx() throws InterruptedException, FileNotFoundException {
-//
-//		/*initialize RL environment*/
-//		 LabRecruitsRLEnvironment labRecruitsRlEnvironment = new LabRecruitsRLEnvironment(burlapConfiguration.getParameterValue("burlap_max_update_cycles"), labrecruits_level, new JaccardDistance());
-//		
-////		DPrint.ul("Initializing domain. Opening level :"+labrecruits_level);
-//		DomainGenerator lrDomainGenerator = new LabRecruitsDomainGenerator();
-//		final SADomain domain = (SADomain) lrDomainGenerator.generateDomain();
-//		
-//		final double qinit = 0;   
-//		final double lr = 0.85;
-//				
-//		/*create Reinforcement Learning (Q-learning) agent*/
-//		QLearningRL agent = new QLearningRL(domain, 0.99, new RlbtHashableStateFactory(), qinit, lr);
-//		List<Episode> episodes = new ArrayList<Episode>(1000);	//list to store results from Q-learning episodes
-//		long startTime = System.currentTimeMillis();
-//		
-//		labRecruitsRlEnvironment.startAgentEnvironment();
-//		/*------------Training - start running episodes------------------------*/
-//		for(int i = 0; i < numOfEpisodes; i++){
-//			episodes.add(agent.runLearningEpisode(labRecruitsRlEnvironment));
-//			labRecruitsRlEnvironment.resetEnvironment();  /*reset environment*/
-//		}
-//
-//		long estimatedTime = System.currentTimeMillis() - startTime;
-//		System.out.println("Time - Training : "+estimatedTime);
-////		agent.writeQTable("qtable.yaml");
-//		agent.serializeQTable("qtable.ser");
-//		agent.printFinalQtable();
-//
-//		// TODO put in a separate method that also run qtable
-//		/*------------Testing - using the optimized Q-table------------------------*/
-//		// if (burlap_testTrainedAgent) {
-//		// 	agent.testQLearingAgent(labRecruitsRlEnvironment, 1900);
-//		// }
-//		
-//	//	labRecruitsRlEnvironment.stopAgentEnvironment();  /*stop RL agent environment*/
-//	}
-
 	
 	private static void executeQLearningTrainingOnLabRecruits() throws InterruptedException, FileNotFoundException {
 		
@@ -165,22 +57,26 @@ public class RlbtMain{
 		DomainGenerator lrDomainGenerator = new LabRecruitsDomainGenerator();
 		final SADomain domain = (SADomain) lrDomainGenerator.generateDomain();
 				
+		int numEpisodes = (int)burlapConfiguration.getParameterValue("burlap.num_of_episodes");
+
 		/*create Reinforcement Learning (Q-learning) agent*/
 		QLearningRL agent = new QLearningRL(domain, 
 				(double)burlapConfiguration.getParameterValue("burlap.qlearning.gamma"), 
 				new RlbtHashableStateFactory(), 
 				(double)burlapConfiguration.getParameterValue("burlap.qlearning.qinit"), 
 				(double)burlapConfiguration.getParameterValue("burlap.qlearning.lr"),
-				(double)burlapConfiguration.getParameterValue("burlap.qlearning.epsilonval"));
+				(double)burlapConfiguration.getParameterValue("burlap.qlearning.epsilonval"),
+				numEpisodes);
 		
-		List<Episode> episodes = new ArrayList<Episode>(1000);	//list to store results from Q-learning episodes
+		List<Episode> episodes = new ArrayList<Episode>(numEpisodes);	//list to store results from Q-learning episodes
 		long startTime = System.currentTimeMillis();
 		
+		int maxActionsPerEpisode = (int)lrConfiguration.getParameterValue("labrecruits.max_actions_per_episode");
 		/*------------Training - start running episodes------------------------*/
 		labRecruitsRlEnvironment.startAgentEnvironment();
-		for(int i = 0; i < (int)burlapConfiguration.getParameterValue("burlap.num_of_episodes"); i++){
+		for(int i = 0; i < numEpisodes; i++){
 			labRecruitsRlEnvironment.resetStateMemory();   // reset state buffer at the beginning of an episode
-			episodes.add(agent.runLearningEpisode(labRecruitsRlEnvironment));
+			episodes.add(agent.runLearningEpisode(labRecruitsRlEnvironment, maxActionsPerEpisode));
 			labRecruitsRlEnvironment.resetEnvironment();  /*reset environment*/
 		}
 		/*------------Save------------------------*/

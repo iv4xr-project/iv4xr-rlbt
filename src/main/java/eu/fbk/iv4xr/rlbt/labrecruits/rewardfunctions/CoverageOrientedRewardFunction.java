@@ -4,7 +4,9 @@
 package eu.fbk.iv4xr.rlbt.labrecruits.rewardfunctions;
 
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 import burlap.mdp.core.action.Action;
 import burlap.mdp.core.state.State;
@@ -17,14 +19,14 @@ import world.BeliefState;
  * @author kifetew
  *
  */
-public class GoalOrientedRewardFunction extends AbstractRlbtRewardFunction {
+public class CoverageOrientedRewardFunction extends AbstractRlbtRewardFunction {
 
-	
 	//store visited states from environment in an episode
 	HashMap<String, Integer> visitedStates = null;//new HashMap<String, Integer>();
 	int stateOccuranceThreshold =4;
+	int actionsSinceLastNewState = 0;
 	
-	public GoalOrientedRewardFunction(StateDistance stateDistanceFunction) {
+	public CoverageOrientedRewardFunction(StateDistance stateDistanceFunction) {
 		super(stateDistanceFunction);
 		
 	}
@@ -32,7 +34,8 @@ public class GoalOrientedRewardFunction extends AbstractRlbtRewardFunction {
 	/*reset the state memory buffer*/
 	@Override
 	public void resetStateBuffer() {
-		visitedStates = new HashMap<String, Integer>();		
+		visitedStates = new HashMap<String, Integer>();
+		actionsSinceLastNewState = 0;
 	}
 	
 	@Override
@@ -89,14 +92,19 @@ public class GoalOrientedRewardFunction extends AbstractRlbtRewardFunction {
 	private int getNumofStateOccurance(String state2) {
 		int numoftimesvisited =0;
 		if (visitedStates.containsKey(state2)){
+			actionsSinceLastNewState++; //increment action counter since state is not new
 			numoftimesvisited = visitedStates.get(state2);
 			visitedStates.put(state2, (numoftimesvisited+1));
 			return numoftimesvisited;
 		}else {  // make a new entry for this state
+			actionsSinceLastNewState = 0; //reset action counter
 			visitedStates.put(state2, 1);
 			return numoftimesvisited;
 		}
 	}
 
+	public int actionsSinceLastNewState() {
+		return actionsSinceLastNewState;
+	}
 
 }

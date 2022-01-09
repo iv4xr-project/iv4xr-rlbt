@@ -24,8 +24,10 @@ import burlap.mdp.singleagent.environment.EnvironmentOutcome;
 import burlap.statehashing.HashableState;
 import environments.LabRecruitsConfig;
 import environments.LabRecruitsEnvironment;
+import eu.fbk.iv4xr.rlbt.RlbtMain.SearchMode;
 import eu.fbk.iv4xr.rlbt.configuration.LRConfiguration;
 import eu.fbk.iv4xr.rlbt.distance.StateDistance;
+import eu.fbk.iv4xr.rlbt.labrecruits.rewardfunctions.CoverageOrientedRewardFunction;
 import eu.fbk.iv4xr.rlbt.labrecruits.rewardfunctions.GoalOrientedRewardFunction;
 import eu.fbk.iv4xr.rlbt.rewardfunction.RlbtRewardFunction;
 import eu.iv4xr.framework.mainConcepts.TestDataCollector;
@@ -77,6 +79,11 @@ public class LabRecruitsRLEnvironment implements Environment {
 	
 	private RlbtRewardFunction rewardFunction;
 	
+	private SearchMode searchMode = SearchMode.CoverageOriented;
+	private int STAGNATION_THRESHOLD = MAX_CYCLES;
+	
+	private int currentEpisode = 0;
+	
 	public LabRecruitsRLEnvironment(LRConfiguration lrConfiguration, StateDistance stateDistance) {
 		maxTicksPerAction = (int)lrConfiguration.getParameterValue("labrecruits.max_ticks_per_action");
 		MAX_CYCLES = (int) lrConfiguration.getParameterValue("labrecruits.max_actions_per_episode");
@@ -93,9 +100,22 @@ public class LabRecruitsRLEnvironment implements Environment {
 		labRecruitesExeRootDir = (String) lrConfiguration.getParameterValue("labrecruits.execution_folder");
 		USE_GRAPHICS = (Boolean) lrConfiguration.getParameterValue("labrecruits.use_graphics");
 		
-		this.rewardFunction = new GoalOrientedRewardFunction(stateDistance);
+		
+		this.searchMode = SearchMode.valueOf((String)lrConfiguration.getParameterValue("labrecruits.search_mode"));
+		this.rewardFunction = getRewardFunction(searchMode, stateDistance);
+		this.STAGNATION_THRESHOLD = (int) lrConfiguration.getParameterValue("labrecruits.max_actions_since_last_new_state");
 	}
 	
+	private RlbtRewardFunction getRewardFunction(SearchMode searchMode, StateDistance stateDistance) {
+		if (searchMode.equals(SearchMode.GoalOriented)) {
+			return new GoalOrientedRewardFunction(stateDistance);
+		}else if (searchMode.equals(SearchMode.CoverageOriented)) {
+			return new CoverageOrientedRewardFunction(stateDistance);
+		}else {
+			throw new RuntimeException("Unknown SearchMode: " + searchMode);
+		}
+	}
+
 	private String checkEntityType(String eType) {
 		
 		if (eType.equalsIgnoreCase(LabEntity.DOOR)) {
@@ -125,6 +145,7 @@ public class LabRecruitsRLEnvironment implements Environment {
 		//lastReward = 0;
 		//updateCycles = 0;
 		
+		currentEpisode = 1;
 		startTestServer();
 
 		LabRecruitsConfig gameConfig = new LabRecruitsConfig(labRecruitsLevel,labRecruitsLevelFolder);
@@ -278,7 +299,7 @@ public class LabRecruitsRLEnvironment implements Environment {
 			// TODO this means the agent cannot do anything, so let the current goal continue?
 		}
 
-		updateCycles++;
+//		updateCycles++;
 			
 		currentState = (LabRecruitsState) currentObservation();  //update current state	after executing the chosen action
 		//DPrint.ul ("Updated current state: "+ currentState.toString());
@@ -403,6 +424,9 @@ public class LabRecruitsRLEnvironment implements Environment {
 		     //          + testAgent.getState().id + " @" + testAgent.getState().worldmodel.position) ;
 			tickCounter++;
 		}
+		
+		// each action consumes budget
+		updateCycles++;
 	}
 	
 	@Override
@@ -412,7 +436,11 @@ public class LabRecruitsRLEnvironment implements Environment {
 
 	@Override
 	public boolean isInTerminalState() {
-		return isFinal(currentState) || updateCycles >= MAX_CYCLES;
+		boolean isFinal = isFinal(currentState) || updateCycles >= MAX_CYCLES;
+		if (isFinal) {
+			System.out.println("Finished Episode: " + currentEpisode);
+		}
+		return isFinal;
 	}
 
 	@Override
@@ -421,7 +449,7 @@ public class LabRecruitsRLEnvironment implements Environment {
 		// TODO agent environment should be restarted only if this is not the last trial,
 		// for now we simply call start agent environment, but should be checked
 		// if last trial, no start.
-		
+		currentEpisode ++;
 		stopTestServer();
 		
 		try {
@@ -467,17 +495,30 @@ public class LabRecruitsRLEnvironment implements Environment {
 //	@Override
 	public boolean isFinal(State state) {
 		LabRecruitsState labRecruitsState = (LabRecruitsState)state;
-		if (labRecruitsState.getObjectsMap().containsKey(goalEntity)) {
-			LabRecruitsEntityObject entity = (LabRecruitsEntityObject) labRecruitsState.getObjectsMap().get(goalEntity);
-			if (entity.getLabRecruitsEntity().type.contentEquals(LabEntity.GOAL)) {
-				return testAgent.getState().distanceTo(goalEntity) <= 0.7;
-			}else if (entity.getLabRecruitsEntity().type.contentEquals(LabEntity.FIREHAZARD)) {
-				return testAgent.getState().distanceTo(goalEntity) <= 0.5;
+		switch(searchMode) {
+		case GoalOriented:
+			if (labRecruitsState.getObjectsMap().containsKey(goalEntity)) {
+				LabRecruitsEntityObject entity = (LabRecruitsEntityObject) labRecruitsState.getObjectsMap().get(goalEntity);
+				if (entity.getLabRecruitsEntity().type.contentEquals(LabEntity.GOAL)) {
+					return testAgent.getState().distanceTo(goalEntity) <= 0.7;
+				}else if (entity.getLabRecruitsEntity().type.contentEquals(LabEntity.FIREHAZARD)) {
+					return testAgent.getState().distanceTo(goalEntity) <= 0.5;
+				}else {
+					return entity.getLabRecruitsEntity().getProperty(goalEntityStatus).toString().equalsIgnoreCase(goalEntityStatusValue); // .getBooleanProperty(booleanProperty);
+				}
 			}else {
-				return entity.getLabRecruitsEntity().getProperty(goalEntityStatus).toString().equalsIgnoreCase(goalEntityStatusValue); // .getBooleanProperty(booleanProperty);
+				return false;
 			}
-		}else {
-			return false;
+		case CoverageOriented:
+			CoverageOrientedRewardFunction rFunction = (CoverageOrientedRewardFunction)rewardFunction;
+			System.out.println("Actions since last new state: " + rFunction.actionsSinceLastNewState());
+			if (rFunction.actionsSinceLastNewState() >= STAGNATION_THRESHOLD) {
+				return true;
+			}else {
+				return false;
+			}
+		default:
+			throw new RuntimeException("Unknown search mode: " + searchMode);
 		}
 	}
 	

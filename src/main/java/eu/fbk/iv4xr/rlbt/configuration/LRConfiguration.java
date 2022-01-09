@@ -20,6 +20,8 @@ public class LRConfiguration extends Configuration{
 		parameters.put("labrecruits.target_entity_type","DOOR");
 		parameters.put("labrecruits.target_entity_property_name","isOpen");
 		parameters.put("labrecruits.target_entity_property_value",true);
+		parameters.put("labrecruits.search_mode", "GoalOriented");
+		parameters.put("labrecruits.max_actions_since_last_new_state", 100);
 	}
 	
 }
