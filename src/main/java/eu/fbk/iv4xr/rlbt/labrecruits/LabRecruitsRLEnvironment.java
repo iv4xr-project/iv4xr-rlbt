@@ -3,6 +3,7 @@
  */
 package eu.fbk.iv4xr.rlbt.labrecruits;
 
+import static nl.uu.cs.aplib.AplibEDSL.*;
 import static nl.uu.cs.aplib.AplibEDSL.SEQ;
 import static nl.uu.cs.aplib.AplibEDSL.goal;
 
@@ -37,6 +38,7 @@ import game.LabRecruitsTestServer;
 import game.Platform;
 import nl.uu.cs.aplib.mainConcepts.Goal;
 import nl.uu.cs.aplib.mainConcepts.GoalStructure;
+import nl.uu.cs.aplib.mainConcepts.Tactic.PrimitiveTactic;
 import world.BeliefState;
 import world.LabEntity;
 
@@ -82,7 +84,7 @@ public class LabRecruitsRLEnvironment implements Environment {
 	private SearchMode searchMode = SearchMode.CoverageOriented;
 	private int STAGNATION_THRESHOLD = MAX_CYCLES;
 	
-	private int currentEpisode = 0;
+	private int currentEpisode = 1;
 	
 	public LabRecruitsRLEnvironment(LRConfiguration lrConfiguration, StateDistance stateDistance) {
 		maxTicksPerAction = (int)lrConfiguration.getParameterValue("labrecruits.max_ticks_per_action");
@@ -145,7 +147,6 @@ public class LabRecruitsRLEnvironment implements Environment {
 		//lastReward = 0;
 		//updateCycles = 0;
 		
-		currentEpisode = 1;
 		startTestServer();
 
 		LabRecruitsConfig gameConfig = new LabRecruitsConfig(labRecruitsLevel,labRecruitsLevelFolder);
@@ -163,7 +164,7 @@ public class LabRecruitsRLEnvironment implements Environment {
 		
 		// set the testing goal here
 		//GoalStructure goal = getActionGoal("button1", LabEntity.SWITCH); //observe(); //getActionGoal("door1", LabEntity.DOOR); // getTestGoal ();
-		GoalStructure goal = getActionGoal(goalEntity, goalEntityType);
+		GoalStructure goal =  explore(); //getActionGoal(goalEntity, goalEntityType);
 		DPrint.ul("Starting Simulation : \n  Goal : "+goalEntity +"    "+goal.toString() +"   Entity type : "+goalEntityType+"  status : "+goal.getStatus());
 		doAction(goal);
 
@@ -199,16 +200,11 @@ public class LabRecruitsRLEnvironment implements Environment {
 		GoalStructure goal = null;
 		if (entityType.contentEquals(LabEntity.SWITCH)) {
 			goal = GoalLib.entityInteracted(entityId);
-			//System.out.println("In goal structure : entity is a button");
-			/*if (testAgent.getState().canInteract(entityId)) {
-				goal = SEQ (//GoalLib.entityStateRefreshed(entityId).lift(),
-						GoalLib.entityInteracted(entityId));
-			}else {
-				// entity indicated by the action is not near by,
-				// TODO what should be done? currently simply refreshes the entity state
-				goal = GoalLib.entityStateRefreshed(entityId);
-				//System.out.println("STATUS : BUTTON NOT INTERACTABLE");
-			}*/
+			
+			//FIXME handle better, this is temporary!
+			clearAgentMemory();
+			
+			//testAgent.getState().getMemorizedPath().clear();
 		} else if(entityType.contentEquals(LabEntity.DOOR)) {
 			goal = SEQ (GoalLib.entityStateRefreshed(entityId),
 					GoalLib.entityInCloseRange(entityId),
@@ -226,6 +222,14 @@ public class LabRecruitsRLEnvironment implements Environment {
 		return goal;
 	}
 
+	/**
+	 * Clear the agent's memory before exploration. This forces the agent to 'refresh' its belief state after an action.
+	 */
+	private void clearAgentMemory () {
+		var surfaceNavGraph = testAgent.getState().pathfinder();
+		surfaceNavGraph.wipeOutMemory();
+	}
+	
 	
 	private void startTestServer (){
 		//String labRecruitesExeRootDir = System.getProperty("user.dir") ;
@@ -250,22 +254,28 @@ public class LabRecruitsRLEnvironment implements Environment {
 	 */
 	
 	@Override	
-	public State currentObservation() {		
+	public State currentObservation() {	
+		
+		// before making the observation of the state, 
+		// first force the agent to explore the surrounding for changes and refresh its belief (state)
+		GoalStructure goal = explore();
+		doAction(goal);
+		
 		LabRecruitsState currentState = new LabRecruitsState(false);
 		BeliefState beliefState = testAgent.getState();
-		Set<String> doorIds = new HashSet<>();
-		for (WorldEntity worldEntity : beliefState.knownEntities()){
-			if (worldEntity.type == "Door") // || worldEntity.type =="Switch")
-			{
-				doorIds.add(worldEntity.id);
-			}
-		}
-		
-		// refresh the state of every door in the agent's belief state
-		for (String doorId : doorIds){
-			GoalStructure goal = doEntityStateRefresh(doorId);
-			doAction(goal);
-		}
+//		Set<String> doorIds = new HashSet<>();
+//		for (WorldEntity worldEntity : beliefState.knownEntities()){
+//			if (worldEntity.type == "Door") // || worldEntity.type =="Switch")
+//			{
+//				doorIds.add(worldEntity.id);
+//			}
+//		}
+//		
+//		// refresh the state of every door in the agent's belief state
+//		for (String doorId : doorIds){
+//			GoalStructure goal = doEntityStateRefresh(doorId);
+//			doAction(goal);
+//		}
 		
 		// add the objects into the LR agent state to build the next state
 		for (WorldEntity worldEntity : beliefState.knownEntities()){
@@ -401,6 +411,25 @@ public class LabRecruitsRLEnvironment implements Environment {
 
         return goal;
     }
+	
+	
+	/**
+	 * Make the agent explore the environment. 
+	 * The tactic used here does NOT have the concept of search budget, hence the goal to which the tactic is attached 
+	 * must have a way of controlling the budget.
+	 * IMPORTANT: the agent's 'memory' must be cleaned before making it execute this goal, otherwise, it will not do any exploration.
+	 * 
+	 * Recommendend usage: 1) at the beginning of an episode, 2) after each action performed (to determine the effect of the action and construct the next state)
+	 * @return
+	 */
+	private static GoalStructure explore() {
+		GoalStructure goal = goal("explore")
+			       .toSolve((BeliefState belief) -> false)
+			       .withTactic(FIRSTof(TacticLib.explore(), ABORT()))
+			       .lift();
+        return goal;
+    }
+
 	
 	/**
 	 * actually make the agent do the selection action. Set the goal to the agent and do some 
