@@ -144,8 +144,8 @@ public class LabRecruitsRLEnvironment implements Environment {
 	
 	/*start RL environment*/
 	public void startAgentEnvironment () throws InterruptedException {
-		//lastReward = 0;
-		//updateCycles = 0;
+		lastReward = 0;
+		updateCycles = 0;
 		
 		startTestServer();
 
@@ -255,7 +255,9 @@ public class LabRecruitsRLEnvironment implements Environment {
 	
 	@Override	
 	public State currentObservation() {	
-		
+		if (this.currentState != null) {
+			DPrint.ul("Current Observation state of Agent before explore :"+ this.currentState.toString() );
+		}
 		// before making the observation of the state, 
 		// first force the agent to explore the surrounding for changes and refresh its belief (state)
 		GoalStructure goal = explore();
@@ -282,7 +284,7 @@ public class LabRecruitsRLEnvironment implements Environment {
 			worldEntity.timestamp=0;
 			currentState.addObject(new LabRecruitsEntityObject(worldEntity));
 		}
-		DPrint.ul("Current Observation state of Agent  :"+ currentState.toString() );
+		DPrint.ul("Current Observation state of Agent after explore :"+ currentState.toString() );
 		return currentState;
 	}
 

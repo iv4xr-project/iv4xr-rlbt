@@ -27,14 +27,18 @@ import burlap.mdp.singleagent.model.RewardFunction;
 import burlap.statehashing.HashableState;
 import burlap.statehashing.HashableStateFactory;
 import eu.fbk.iv4xr.rlbt.utils.SerializationUtil;
+import eu.fbk.iv4xr.rlbt.utils.Utils;
 
 import org.yaml.snakeyaml.Yaml;
 
 import javax.management.RuntimeErrorException;
 import java.io.*;
 import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 
 /**
@@ -764,6 +768,7 @@ public class QLearningRL extends MDPSolver implements QProvider, LearningAgent, 
 				//this.totalNumberOfSteps++;
 			}else {
 				// FIXME this is added to avoid an NPE, not sure it's the correct way
+				System.out.println("No action available from state: " + curState.s().toString());
 				break; 
 			}
 		}
@@ -771,11 +776,35 @@ public class QLearningRL extends MDPSolver implements QProvider, LearningAgent, 
 
 
 	// Testing Q-learning agent
+	public Action _getMaxValuedAction(HashableState curstate) {	
+		System.out.println("getmaxvalueaction ()  - Q table size = "+ this.qFunction.size());
+//		Action acc = null;
+		double max = Double.NEGATIVE_INFINITY;
+		Set<Action> optimalActions = new HashSet<>();
+		if (qFunction.containsKey(curstate)) {
+			QLearningStateNode node = qFunction.get(curstate);
+			System.out.println("In getMaxQ , got state ="+curstate.s());
+			List <QValue> qs = node.qEntry;//this.getQs(s);		
+			for(QValue q : qs){
+				if(q.q > max){
+					max = q.q;
+//					acc = q.a;
+					optimalActions.clear();
+					optimalActions.add(q.a);
+				}else if (q.q == max) {
+					optimalActions.add(q.a);
+				}
+			}	
+		}				
+		System.out.println("Choosing one among: " + optimalActions.size() + " actions");
+		return Utils.choice(optimalActions);		
+	}
+		
+	// Testing Q-learning agent
 	public Action getMaxValuedAction(HashableState curstate) {	
 		System.out.println("getmaxvalueaction ()  - Q table size = "+ this.qFunction.size());
 		Action acc = null;
 		double max = Double.NEGATIVE_INFINITY;
-		
 		if (qFunction.containsKey(curstate)) {
 			QLearningStateNode node = qFunction.get(curstate);
 			System.out.println("In getMaxQ , got state ="+curstate.s());
@@ -785,13 +814,11 @@ public class QLearningRL extends MDPSolver implements QProvider, LearningAgent, 
 					max = q.q;
 					acc = q.a;
 				}
-			}
+			}	
 		}				
-		//System.out.println("max valued action  = "+ acc.actionName()+" max val = "+max);
+//		System.out.println("Choosing one among: " + optimalActions.size() + " actions");
 		return acc;		
 	}
-		
-	
 	
 	@Override
 	public void resetSolver(){
