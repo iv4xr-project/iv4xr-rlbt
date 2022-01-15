@@ -1,12 +1,17 @@
 package eu.fbk.iv4xr.rlbt.configuration;
 
 import java.io.BufferedReader;
+import java.io.File;
 import java.io.FileReader;
 import java.io.IOException;
+import java.nio.charset.Charset;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Map.Entry;
 import java.util.Properties;
+
+import org.apache.commons.io.FileUtils;
 
 
 /**
@@ -89,5 +94,23 @@ public abstract class Configuration {
 	}
 	
 	
+	public boolean writeToFile (String outputFile) {
+		boolean success = true;
+		StringBuffer buffer = new StringBuffer();
+		if (parameters != null) {
+			for (Entry<String, Object> entry : parameters.entrySet()) {
+				buffer.append(entry.getKey() + "=" + entry.getValue().toString() + "\n");
+			}
+		}else {
+			success = false;
+		}
+		try {
+			FileUtils.writeStringToFile(new File(outputFile), buffer.toString(), Charset.defaultCharset());
+		} catch (IOException e) {
+			success = false;
+			e.printStackTrace();
+		}
+		return success;
+	}
 
 }

@@ -91,4 +91,9 @@ public class LabRecruitsEntityObject implements ObjectInstance, Serializable {
 		return labRecruitsEntity;
 	}
 
+	
+	@Override
+	public String toString() {
+		return name();
+	}
 }

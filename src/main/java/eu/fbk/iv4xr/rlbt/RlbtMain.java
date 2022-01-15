@@ -4,6 +4,7 @@
 package eu.fbk.iv4xr.rlbt;
 
 
+import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.PrintStream;
 import java.util.ArrayList;
@@ -26,6 +27,7 @@ import eu.fbk.iv4xr.rlbt.labrecruits.LabRecruitsDomainGenerator;
 import eu.fbk.iv4xr.rlbt.labrecruits.LabRecruitsRLEnvironment;
 import eu.fbk.iv4xr.rlbt.labrecruits.RlbtHashableStateFactory;
 import eu.fbk.iv4xr.rlbt.labrecruits.distance.JaccardDistance;
+import eu.fbk.iv4xr.rlbt.utils.SerializationUtil;
 
 /**
  * @author kifetew
@@ -47,11 +49,14 @@ public class RlbtMain{
 	static String burlapConfigFile =  currentDir+"/src/test/resources/configurations/burlap_test.config";
 	static String lrConfigFile = currentDir+"/src/test/resources/configurations/buttons_doors_1.config";
 
+	// root folder for writing output
+	static String outputDir = currentDir + File.separator + "rlbt-files" + File.separator + System.nanoTime();
+	
 	// Configurations
 	static BurlapConfiguration burlapConfiguration = new BurlapConfiguration();
 	static LRConfiguration lrConfiguration = new LRConfiguration();
 	
-	private static void executeQLearningTrainingOnLabRecruits() throws InterruptedException, FileNotFoundException {
+	private static List<Episode> executeQLearningTrainingOnLabRecruits() throws InterruptedException, FileNotFoundException {
 		
 		LabRecruitsRLEnvironment labRecruitsRlEnvironment = new LabRecruitsRLEnvironment(lrConfiguration, new JaccardDistance());
 		DomainGenerator lrDomainGenerator = new LabRecruitsDomainGenerator();
@@ -83,10 +88,14 @@ public class RlbtMain{
 		long estimatedTime = System.currentTimeMillis() - startTime;
 		System.out.println("Time - Training : "+estimatedTime);
 		agent.printFinalQtable(System.out);
-		String qtableOutputFile = (String)burlapConfiguration.getParameterValue("burlap.qlearning.out_qtable");
+		String qtableOutputFile = outputDir + File.separator + "qtable.ser"; // (String)burlapConfiguration.getParameterValue("burlap.qlearning.out_qtable");
 		agent.serializeQTable(qtableOutputFile);
 		agent.printFinalQtable(new PrintStream(qtableOutputFile + ".txt"));
+		
+		String episodesBaseName = outputDir + File.separator + "episode";
+		SerializationUtil.serializeEpisodes(episodes, episodesBaseName );
 		labRecruitsRlEnvironment.stopAgentEnvironment();  /*stop RL agent environment*/
+		return episodes;
 	}
 	
 	
@@ -97,11 +106,12 @@ public class RlbtMain{
 	 * @throws InterruptedException 
 	 * @throws FileNotFoundException 
 	 */
-	private void executeTraining (CommandLine line, Options options) throws FileNotFoundException, InterruptedException {
+	private List<Episode> executeTraining (CommandLine line, Options options) throws FileNotFoundException, InterruptedException {
 		// check algorithm and execute corresponding method
 		String alg = (String)burlapConfiguration.getParameterValue("burlap.algorithm");
 		if (alg.equalsIgnoreCase(BurlapAlgorithm.QLearning.toString())) {
-			executeQLearningTrainingOnLabRecruits();
+			List<Episode> episodes = executeQLearningTrainingOnLabRecruits();
+			return episodes;
 		}else {
 			throw new RuntimeException("Algorithm "+alg+" not supported");
 		}
@@ -116,11 +126,12 @@ public class RlbtMain{
 	 * @param options
 	 * @throws FileNotFoundException 
 	 */
-	private void executeTesting (CommandLine line, Options options) throws FileNotFoundException {
+	private Episode executeTesting (CommandLine line, Options options) throws FileNotFoundException {
 		// check algorithm and execute corresponding method
 		String alg = (String)burlapConfiguration.getParameterValue("burlap.algorithm");
 		if (alg.equalsIgnoreCase(BurlapAlgorithm.QLearning.toString())) {
-			executeQLearningTestingOnLabRecruits();
+			Episode episode = executeQLearningTestingOnLabRecruits();
+			return episode;
 		}else {
 			throw new RuntimeException("Algorithm "+alg+" not supported");
 		}
@@ -134,7 +145,7 @@ public class RlbtMain{
 	 * @param options
 	 * @throws FileNotFoundException 
 	 */
-	private void executeQLearningTestingOnLabRecruits () throws FileNotFoundException {
+	private Episode executeQLearningTestingOnLabRecruits () throws FileNotFoundException {
 		/*initialize RL environment*/
 		LabRecruitsRLEnvironment labRecruitsRlEnvironment = new LabRecruitsRLEnvironment(lrConfiguration, new JaccardDistance());
 		
@@ -150,17 +161,23 @@ public class RlbtMain{
 				(double)burlapConfiguration.getParameterValue("burlap.qlearning.lr"));
 		long startTime = System.currentTimeMillis();
 		
-		agent.deserializeQTable((String)burlapConfiguration.getParameterValue("burlap.qlearning.out_qtable"));
+		String qtablePath = (String)burlapConfiguration.getParameterValue("burlap.qlearning.out_qtable");
+		agent.deserializeQTable(qtablePath );
 		agent.printFinalQtable(System.out);
 		
 		labRecruitsRlEnvironment.resetStateMemory();   // reset state buffer at the beginning of an episode
-		agent.testQLearingAgent(labRecruitsRlEnvironment, 1900);
+		Episode episode = agent.testQLearingAgent(labRecruitsRlEnvironment, 1900);
 		
 		long estimatedTime = System.currentTimeMillis() - startTime;
 		System.out.println("Time - Testing : "+estimatedTime);
 
 		
 		labRecruitsRlEnvironment.stopAgentEnvironment();  /*stop RL agent environment*/
+		
+		String episodeBaseName = outputDir + "episode";
+		SerializationUtil.serializeEpisode(episode, episodeBaseName );
+		
+		return episode;
 	}
 
 	
@@ -261,14 +278,20 @@ public class RlbtMain{
 	        boolean loadAndSetParameter = main.loadAndSetParameter(line,options);
 	        // choose testing or training
 	        if (loadAndSetParameter) {
-
-				if (line.hasOption("trainingMode")) {
-					main.executeTraining(line, options);
-				}else if (line.hasOption("testingMode")){
-					main.executeTesting(line, options);
-				}else {
-					System.err.println("Must specify  -trainingMode or -testingMode");	
-				}
+	        	// create output folder
+	        	if ((new File (outputDir)).mkdirs()) {
+					if (line.hasOption("trainingMode")) {
+						main.executeTraining(line, options);
+					}else if (line.hasOption("testingMode")){
+						main.executeTesting(line, options);
+					}else {
+						System.err.println("Must specify  -trainingMode or -testingMode");	
+					}
+					// save configurations in output directory for reproducibility
+					saveConfigurations();
+	        	}else {
+	        		System.err.println("Quitting because unable to create output directory: " + outputDir);
+	        	}
 			}else {
 				System.err.println( "Fail to load parameter files. Quitting!");
 			}
@@ -279,5 +302,11 @@ public class RlbtMain{
 	    
 
 
+	}
+
+
+	private static void saveConfigurations() {
+		lrConfiguration.writeToFile(outputDir + File.separator + "sut.config");
+		burlapConfiguration.writeToFile(outputDir + File.separator + "burlap.config"); 
 	}
 } /*end*/

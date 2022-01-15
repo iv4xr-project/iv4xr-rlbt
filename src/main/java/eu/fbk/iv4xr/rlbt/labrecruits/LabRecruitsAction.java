@@ -62,4 +62,9 @@ public class LabRecruitsAction implements Action, Serializable {
 	public Action copy() {
 		return new LabRecruitsAction(this.actionId);
 	}
+	
+	@Override
+	public String toString() {
+		return actionName();
+	}
 }

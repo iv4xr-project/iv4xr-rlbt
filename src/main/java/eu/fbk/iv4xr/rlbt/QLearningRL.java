@@ -734,11 +734,11 @@ public class QLearningRL extends MDPSolver implements QProvider, LearningAgent, 
 
 
 	/*---------------------Test QLearning Agent------------------------------------------------------------------------*/
-	public void testQLearingAgent(Environment env, int maxSteps) {	
+	public Episode testQLearingAgent(Environment env, int maxSteps) {	
 		System.out.println("---------------------------------------------------------------\n Test  QLearning agent");
 		env.resetEnvironment();
 		State initialState = env.currentObservation();		
-		Episode ea = new Episode(initialState);
+		Episode episode = new Episode(initialState);
 		HashableState curState = this.stateHash(initialState);
 		
 		System.out.println("Hashed state = " +curState+ "hash value  = "+ curState.hashCode());
@@ -759,12 +759,23 @@ public class QLearningRL extends MDPSolver implements QProvider, LearningAgent, 
 					eo = ((Option)action).control(env, this.gamma);
 				}
 				System.out.println("Action executed, returned in TestQLearingAgent()"+ action.actionName());
-				HashableState nextState = this.stateHash(eo.op);
-				System.out.println("In TestQLearingAgent() ,hashed current state = "+curState.hashCode()+"  \n  next state = "+nextState.hashCode());
+				curState = this.stateHash(eo.op);
 				
+				// update Episode object
+				if(!(action instanceof Option) || !this.shouldDecomposeOptions){
+					episode.transition(action, curState.s(), eo.r);
+				}
+				else{
+					throw new RuntimeException("Should not reach here");
+					//episode.appendAndMergeEpisodeAnalysis(((EnvironmentOptionOutcome)eo).episode);
+				}
+				
+				//System.out.println("In TestQLearingAgent() ,hashed current state = "+curState.hashCode()+"  \n  next state = "+nextState.hashCode());
+				
+				// TODO code below is commented because it's not necessary. currentObservation() is already called in executeAction()
 				//move on polling environment for its current state in case it changed during processing
-				curState = this.stateHash(env.currentObservation());
-				System.out.println("TestQLearingAgent()  -- checking cur state  after action execution = "+ curState.s().toString());
+				//curState = this.stateHash(env.currentObservation());
+				//System.out.println("TestQLearingAgent()  -- checking cur state  after action execution = "+ curState.s().toString());
 				//this.totalNumberOfSteps++;
 			}else {
 				// FIXME this is added to avoid an NPE, not sure it's the correct way
@@ -772,11 +783,12 @@ public class QLearningRL extends MDPSolver implements QProvider, LearningAgent, 
 				break; 
 			}
 		}
+		return episode;
 	}
 
 
 	// Testing Q-learning agent
-	public Action _getMaxValuedAction(HashableState curstate) {	
+	public Action getMaxValuedAction(HashableState curstate) {	
 		System.out.println("getmaxvalueaction ()  - Q table size = "+ this.qFunction.size());
 //		Action acc = null;
 		double max = Double.NEGATIVE_INFINITY;
@@ -801,7 +813,7 @@ public class QLearningRL extends MDPSolver implements QProvider, LearningAgent, 
 	}
 		
 	// Testing Q-learning agent
-	public Action getMaxValuedAction(HashableState curstate) {	
+	public Action _getMaxValuedAction(HashableState curstate) {	
 		System.out.println("getmaxvalueaction ()  - Q table size = "+ this.qFunction.size());
 		Action acc = null;
 		double max = Double.NEGATIVE_INFINITY;
