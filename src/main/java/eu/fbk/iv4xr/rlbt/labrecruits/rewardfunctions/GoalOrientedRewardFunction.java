@@ -56,7 +56,7 @@ public class GoalOrientedRewardFunction extends AbstractRlbtRewardFunction {
 			//give penalty for exploring same state 
 			if (stateOccurance>stateOccuranceThreshold)
 			{
-				reward = reward - (dissimilarity*10);
+				reward = reward - (dissimilarity*10 + PENALTY);
 				//System.out.println("Action  = "+action.actionName()+"  State visited over threshold,  penalty = "+reward);
 			}
 			//System.out.println("dissimilarity = "+dissimilarity+"  statevisited = "+stateOccurance);

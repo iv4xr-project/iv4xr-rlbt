@@ -121,6 +121,28 @@ public class RlbtMain{
 	
 	
 	/**
+	 * Execute a random training agent with parameters
+	 * @param line
+	 * @param options
+	 * @throws InterruptedException 
+	 * @throws FileNotFoundException 
+	 */
+	private List<Episode> executeRandom (CommandLine line, Options options) throws FileNotFoundException, InterruptedException {
+		// check algorithm and execute corresponding method
+		String alg = (String)burlapConfiguration.getParameterValue("burlap.algorithm");
+		if (alg.equalsIgnoreCase(BurlapAlgorithm.QLearning.toString())) {
+			// to enable random exploration, set epsilon to 1 (no exploitation)
+			burlapConfiguration.setParameterValue("burlap.qlearning.epsilonval", "1.0");
+			List<Episode> episodes = executeQLearningTrainingOnLabRecruits();
+			return episodes;
+		}else {
+			throw new RuntimeException("Algorithm "+alg+" not supported");
+		}
+		
+		
+	}
+	
+	/**
 	 * Execute training accordingly with parameters
 	 * @param line
 	 * @param options
@@ -216,11 +238,18 @@ public class RlbtMain{
 				.desc("Execute testing phase")
 				.build();
 
+		Option randomMode = Option.builder("randomMode")
+				.required(false)
+				.type(String.class)
+				.desc("Execute a random learning agent")
+				.build();
+		
 		options.addOption(help);
 		options.addOption(sutConfig);
 		options.addOption(burlapConfig);
 		options.addOption(trainingMode);
 		options.addOption(testingMode);
+		options.addOption(randomMode);
 		
 		return options;
 	}
@@ -284,6 +313,8 @@ public class RlbtMain{
 						main.executeTraining(line, options);
 					}else if (line.hasOption("testingMode")){
 						main.executeTesting(line, options);
+					}else if (line.hasOption("randomMode")) {
+						main.executeRandom(line, options);
 					}else {
 						System.err.println("Must specify  -trainingMode or -testingMode");	
 					}

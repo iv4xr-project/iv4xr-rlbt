@@ -15,6 +15,8 @@ import world.BeliefState;
 public class AbstractRlbtRewardFunction implements RlbtRewardFunction {
 
 	private StateDistance stateDistanceFunction;
+
+	protected static double PENALTY = 5; 
 	
 	public AbstractRlbtRewardFunction() {
 		
