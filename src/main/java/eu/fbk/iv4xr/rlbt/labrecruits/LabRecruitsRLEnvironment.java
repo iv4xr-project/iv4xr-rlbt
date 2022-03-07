@@ -25,6 +25,7 @@ import burlap.mdp.singleagent.environment.EnvironmentOutcome;
 import burlap.statehashing.HashableState;
 import environments.LabRecruitsConfig;
 import environments.LabRecruitsEnvironment;
+import eu.fbk.iv4xr.rlbt.RlbtMain.RewardType;
 import eu.fbk.iv4xr.rlbt.RlbtMain.SearchMode;
 import eu.fbk.iv4xr.rlbt.configuration.LRConfiguration;
 import eu.fbk.iv4xr.rlbt.distance.StateDistance;
@@ -41,6 +42,7 @@ import nl.uu.cs.aplib.mainConcepts.GoalStructure;
 import nl.uu.cs.aplib.mainConcepts.Tactic.PrimitiveTactic;
 import world.BeliefState;
 import world.LabEntity;
+import world.LabWorldModel;
 
 
 /**
@@ -56,9 +58,7 @@ public class LabRecruitsRLEnvironment implements Environment {
 	private static LabRecruitsTestServer labRecruitsTestServer = null;
 	LabRecruitsTestAgent testAgent = null;
 	
-	
-	
-	
+		
 	private LabRecruitsState currentState = null;
 	private double lastReward = 0;
 	
@@ -82,9 +82,14 @@ public class LabRecruitsRLEnvironment implements Environment {
 	private RlbtRewardFunction rewardFunction;
 	
 	private SearchMode searchMode = SearchMode.CoverageOriented;
+	private RewardType rewardtype = RewardType.Sparse;
+	
+	//private int healthScore;
+	
 	private int STAGNATION_THRESHOLD = MAX_CYCLES;
 	
 	private int currentEpisode = 1;
+	private int healthpenalty;
 	
 	public LabRecruitsRLEnvironment(LRConfiguration lrConfiguration, StateDistance stateDistance) {
 		maxTicksPerAction = (int)lrConfiguration.getParameterValue("labrecruits.max_ticks_per_action");
@@ -104,8 +109,12 @@ public class LabRecruitsRLEnvironment implements Environment {
 		
 		
 		this.searchMode = SearchMode.valueOf((String)lrConfiguration.getParameterValue("labrecruits.search_mode"));
+		this.rewardtype = RewardType.valueOf((String)lrConfiguration.getParameterValue("labrecruits.rewardtype"));   // Sparse, CuriosityDriven
+		
 		this.rewardFunction = getRewardFunction(searchMode, stateDistance);
 		this.STAGNATION_THRESHOLD = (int) lrConfiguration.getParameterValue("labrecruits.max_actions_since_last_new_state");
+		//this.healthScore =100;
+		this.healthpenalty=0;
 	}
 	
 	private RlbtRewardFunction getRewardFunction(SearchMode searchMode, StateDistance stateDistance) {
@@ -139,6 +148,8 @@ public class LabRecruitsRLEnvironment implements Environment {
 		
 	/*reset the state memory buffer*/
 	public void resetStateMemory() {
+		//this.healthScore=100;
+		this.healthpenalty=0;
 		this.rewardFunction.resetStateBuffer();	
 	}
 	
@@ -146,6 +157,7 @@ public class LabRecruitsRLEnvironment implements Environment {
 	public void startAgentEnvironment () throws InterruptedException {
 		lastReward = 0;
 		updateCycles = 0;
+		//this.healthScore=100;
 		
 		startTestServer();
 
@@ -255,6 +267,8 @@ public class LabRecruitsRLEnvironment implements Environment {
 	
 	@Override	
 	public State currentObservation() {	
+		//LabWorldModel wom = null ;
+		
 		if (this.currentState != null) {
 			DPrint.ul("Current Observation state of Agent before explore :"+ this.currentState.toString() );
 		}
@@ -265,6 +279,9 @@ public class LabRecruitsRLEnvironment implements Environment {
 		
 		LabRecruitsState currentState = new LabRecruitsState(false);
 		BeliefState beliefState = testAgent.getState();
+		//testAgent.getState().worldmodel().mergeNewObservation(testAgent.getState().worldmodel());
+		//System.out.println("Health loss: "+ testAgent.getState().worldmodel().healthLost);
+		
 //		Set<String> doorIds = new HashSet<>();
 //		for (WorldEntity worldEntity : beliefState.knownEntities()){
 //			if (worldEntity.type == "Door") // || worldEntity.type =="Switch")
@@ -319,6 +336,9 @@ public class LabRecruitsRLEnvironment implements Environment {
 		boolean terminated = isFinal(currentState);
 		//DPrint.ul("is this the final state:" + terminated);
 		lastReward = getReward(oldState, currentState, action);
+		//if(testAgent.getState().worldmodel().health<80) {
+		//	this.healthpenalty=this.healthpenalty+1;
+		//}
 		//DPrint.ul("get reward :" + lastReward);
 		
 		EnvironmentOutcome outcome = new EnvironmentOutcome(oldState, action, currentState, lastReward, terminated);
@@ -326,6 +346,7 @@ public class LabRecruitsRLEnvironment implements Environment {
 		DPrint.ul ("From: " + oldState.toString() + "\n To: " + currentState.toString() + 
 				" Action: " + action.actionName() + " Reward: " + lastReward + 
 				" Goal status: " + (subGoal != null?subGoal.getStatus().toString():" NULL"));
+		DPrint.ul("Health penalty = "+this.healthpenalty);
 		return outcome;
 	}
 
@@ -514,10 +535,27 @@ public class LabRecruitsRLEnvironment implements Environment {
 		if (isFinal(state2)) {			
 			reward = 100;
 			//System.out.println("Action  = "+action.actionName()+"  Final State, reward = "+reward);
-		} else {
-			reward = rewardFunction.reward(state1, action, state2, testAgent.getState());
+		} else {			
+			switch(rewardtype) {  //enable either sparse or curiosityDriven reward 
+			case Sparse:	
+				//System.out.println("Sparse mode , reward = " +0);
+				return 0;				
+				
 			
+			case CuriousityDriven:
+				reward = rewardFunction.reward(state1, action, state2, testAgent.getState());
+				/*// adding penalty for health 
+				  if(testAgent.getState().worldmodel().health < 80) {
+					reward =reward-5*2;
+					this.healthpenalty =this.healthpenalty+1;
+				}*/
+				return reward;
 			
+			default:
+				throw new RuntimeException("Unknown reward type: " + rewardtype);
+			}
+			
+			//reward = rewardFunction.reward(state1, action, state2, testAgent.getState());
 		}
 		System.out.println("-------------------------Reward : "+ reward);
 		return reward; 
