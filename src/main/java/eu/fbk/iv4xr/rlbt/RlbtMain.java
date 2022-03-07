@@ -44,13 +44,17 @@ public class RlbtMain{
 		GoalOriented, CoverageOriented
 	}
 	
+	public enum RewardType{
+		Sparse, CuriousityDriven
+	}
+	
 	// Predefined configuration file
 	static String currentDir = System.getProperty("user.dir");
 	static String burlapConfigFile =  currentDir+"/src/test/resources/configurations/burlap_test.config";
 	static String lrConfigFile = currentDir+"/src/test/resources/configurations/buttons_doors_1.config";
 
 	// root folder for writing output
-	static String outputDir = currentDir + File.separator + "rlbt-files" + File.separator + System.nanoTime();
+	static String outputDir = currentDir + File.separator + "rlbt-files" ;//+ File.separator + System.nanoTime();
 	
 	// Configurations
 	static BurlapConfiguration burlapConfiguration = new BurlapConfiguration();
@@ -71,6 +75,7 @@ public class RlbtMain{
 				(double)burlapConfiguration.getParameterValue("burlap.qlearning.qinit"), 
 				(double)burlapConfiguration.getParameterValue("burlap.qlearning.lr"),
 				(double)burlapConfiguration.getParameterValue("burlap.qlearning.epsilonval"),
+				(double)burlapConfiguration.getParameterValue("burlap.qlearning.decayedepsilonstep"),
 				numEpisodes);
 		
 		List<Episode> episodes = new ArrayList<Episode>(numEpisodes);	//list to store results from Q-learning episodes
@@ -84,6 +89,7 @@ public class RlbtMain{
 			episodes.add(agent.runLearningEpisode(labRecruitsRlEnvironment, maxActionsPerEpisode));
 			labRecruitsRlEnvironment.resetEnvironment();  /*reset environment*/
 		}
+		
 		/*------------Save------------------------*/
 		long estimatedTime = System.currentTimeMillis() - startTime;
 		System.out.println("Time - Training : "+estimatedTime);
@@ -91,6 +97,75 @@ public class RlbtMain{
 		String qtableOutputFile = outputDir + File.separator + "qtable.ser"; // (String)burlapConfiguration.getParameterValue("burlap.qlearning.out_qtable");
 		agent.serializeQTable(qtableOutputFile);
 		agent.printFinalQtable(new PrintStream(qtableOutputFile + ".txt"));
+		String episodesummaryfile = outputDir + File.separator + "episodeSummary.txt"; 
+		SaveEpisodeSummary(episodes, episodesummaryfile); //store episode summary (number of actions and reward per episode)
+				
+		String episodesBaseName = outputDir + File.separator + "episode";
+		SerializationUtil.serializeEpisodes(episodes, episodesBaseName );
+		labRecruitsRlEnvironment.stopAgentEnvironment();  /*stop RL agent environment*/
+		return episodes;
+	}
+	
+private static void SaveEpisodeSummary(List<Episode> episodes, String outfile) throws FileNotFoundException {
+	PrintStream ps =  new PrintStream(outfile);
+	/*print number of actions taken per episode*/
+	for (int i=0;i<episodes.size();i++) {
+		ps.print(episodes.get(i).actionSequence.size()+" ");
+	}
+	ps.println();
+	/*print reward summary per episode*/
+	for (int i=0;i<episodes.size();i++) {
+		double sumreward=0;
+		for (int j=0;j<episodes.get(i).rewardSequence.size();j++) {
+			sumreward =sumreward +episodes.get(i).rewardSequence.get(j);
+		}
+		ps.print(sumreward+" ");
+	}
+	ps.println();
+	
+	ps.close();
+	} //end of function
+
+/*execute training with pure random explore*/
+private static List<Episode> executeRandomTrainingOnLabRecruits() throws InterruptedException, FileNotFoundException {
+		
+		LabRecruitsRLEnvironment labRecruitsRlEnvironment = new LabRecruitsRLEnvironment(lrConfiguration, new JaccardDistance());
+		DomainGenerator lrDomainGenerator = new LabRecruitsDomainGenerator();
+		final SADomain domain = (SADomain) lrDomainGenerator.generateDomain();
+				
+		int numEpisodes = (int)burlapConfiguration.getParameterValue("burlap.num_of_episodes");
+
+		/*create Reinforcement Learning (Q-learning) agent*/
+		QLearningRL agent = new QLearningRL(domain, 
+				(double)burlapConfiguration.getParameterValue("burlap.qlearning.gamma"), 
+				new RlbtHashableStateFactory(), 
+				(double)burlapConfiguration.getParameterValue("burlap.qlearning.qinit"), 
+				(double)burlapConfiguration.getParameterValue("burlap.qlearning.lr"),
+				(double)burlapConfiguration.getParameterValue("burlap.qlearning.epsilonval"),
+				(double)burlapConfiguration.getParameterValue("burlap.qlearning.decayedepsilonstep"),
+				numEpisodes);
+		
+		List<Episode> episodes = new ArrayList<Episode>(numEpisodes);	//list to store results from Q-learning episodes
+		long startTime = System.currentTimeMillis();
+		
+		int maxActionsPerEpisode = (int)lrConfiguration.getParameterValue("labrecruits.max_actions_per_episode");
+		/*------------Training - start running episodes------------------------*/
+		labRecruitsRlEnvironment.startAgentEnvironment();
+		for(int i = 0; i < numEpisodes; i++){
+			labRecruitsRlEnvironment.resetStateMemory();   // reset state buffer at the beginning of an episode
+			episodes.add(agent.runLearningEpisodeRandom(labRecruitsRlEnvironment, maxActionsPerEpisode));
+			labRecruitsRlEnvironment.resetEnvironment();  /*reset environment*/
+		}
+		/*------------Save------------------------*/
+		long estimatedTime = System.currentTimeMillis() - startTime;
+		System.out.println("Time - Training : "+estimatedTime);
+		agent.printFinalQtable(System.out);
+		String qtableOutputFile = outputDir + File.separator + "qtable.ser"; // (String)burlapConfiguration.getParameterValue("burlap.qlearning.out_qtable");
+		agent.serializeQTable(qtableOutputFile);
+		agent.printFinalQtable(new PrintStream(qtableOutputFile + ".txt"));
+		String episodesummaryfile = outputDir + File.separator + "episodeSummary.txt"; 
+		SaveEpisodeSummary(episodes, episodesummaryfile);  // store episode summary (number of actions and reward per episode)
+
 		
 		String episodesBaseName = outputDir + File.separator + "episode";
 		SerializationUtil.serializeEpisodes(episodes, episodesBaseName );
@@ -98,7 +173,8 @@ public class RlbtMain{
 		return episodes;
 	}
 	
-	
+
+
 	/**
 	 * Execute training accordingly with parameters
 	 * @param line
@@ -133,7 +209,8 @@ public class RlbtMain{
 		if (alg.equalsIgnoreCase(BurlapAlgorithm.QLearning.toString())) {
 			// to enable random exploration, set epsilon to 1 (no exploitation)
 			burlapConfiguration.setParameterValue("burlap.qlearning.epsilonval", "1.0");
-			List<Episode> episodes = executeQLearningTrainingOnLabRecruits();
+			burlapConfiguration.setParameterValue("burlap.qlearning.decayedepsilonstep", "1.0");
+			List<Episode> episodes = executeRandomTrainingOnLabRecruits();
 			return episodes;
 		}else {
 			throw new RuntimeException("Algorithm "+alg+" not supported");
@@ -156,10 +233,10 @@ public class RlbtMain{
 			return episode;
 		}else {
 			throw new RuntimeException("Algorithm "+alg+" not supported");
-		}
-		
+		}	
 		
 	}
+
 	
 	/**
 	 * Execute testing accordingly with parameters
@@ -202,6 +279,30 @@ public class RlbtMain{
 		return episode;
 	}
 
+
+
+	
+	/**
+	 * Perform post analysis on learning traces 
+	 * @param line
+	 * @param options
+	 * @throws InterruptedException 
+	 * @throws FileNotFoundException 
+	 */
+	private List<Episode> postAnalysisLearningTraces (CommandLine line, Options options) throws FileNotFoundException, InterruptedException {
+		// check algorithm and execute corresponding method
+		String alg = (String)burlapConfiguration.getParameterValue("burlap.algorithm");
+		String labRecruitsLevel = (String) lrConfiguration.getParameterValue("labrecruits.level_name");
+		if (alg.equalsIgnoreCase(BurlapAlgorithm.QLearning.toString())) {
+			List<Episode> episodes = executeQLearningTrainingOnLabRecruits();
+			return episodes;
+		}else {
+			throw new RuntimeException("Algorithm "+alg+" not supported");
+		}
+		
+		
+	}
+	
 	
 	/**
 	 * define command line options
@@ -326,6 +427,7 @@ public class RlbtMain{
 			}else {
 				System.err.println( "Fail to load parameter files. Quitting!");
 			}
+	        saveConfigurations();
 	    }
 	    catch( ParseException exp ) {
 	        System.err.println( "Parsing command line failed.  Reason: " + exp.getMessage() );
