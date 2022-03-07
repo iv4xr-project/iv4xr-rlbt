@@ -17,6 +17,7 @@ import burlap.behavior.valuefunction.QFunction;
 import burlap.behavior.valuefunction.QProvider;
 import burlap.behavior.valuefunction.QValue;
 import burlap.debugtools.DPrint;
+import burlap.debugtools.RandomFactory;
 import burlap.mdp.core.action.Action;
 import burlap.mdp.core.state.State;
 import burlap.mdp.singleagent.SADomain;
@@ -38,6 +39,7 @@ import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.Random;
 import java.util.Set;
 
 
@@ -90,6 +92,11 @@ public class QLearningRL extends MDPSolver implements QProvider, LearningAgent, 
 	 * Epsilon value (exploit-explore)
 	 */
 	protected double							 				epsilongr;
+	
+	/**
+	 * Decayed Epsilon value (step to control epsilon steps)
+	 */
+	protected double 											decayedEpsilonstep;
 	/**
 	 * The learning rate function used.
 	 */
@@ -235,6 +242,7 @@ public class QLearningRL extends MDPSolver implements QProvider, LearningAgent, 
 	 */
 	protected int													totalNumberOfSteps = 0;
 	
+	protected Random 					rand;
 	
 	/**
 	 * Initializes Q-learning with 0.1 epsilon greedy policy, the same Q-value initialization everywhere, and places no limit on the number of steps the 
@@ -253,8 +261,8 @@ public class QLearningRL extends MDPSolver implements QProvider, LearningAgent, 
 	}
 
 	public QLearningRL(SADomain domain, double gamma, HashableStateFactory hashingFactory,
-			double qInit, double learningRate, double epsilonval, int maxEpisodeSize) {
-		this.QLInit(domain, gamma, hashingFactory, new ConstantValueFunction(qInit), learningRate, new EpsilonGreedy(this, epsilonval), epsilonval, maxEpisodeSize);
+			double qInit, double learningRate, double epsilonval, double decayepsilonstep, int maxEpisodeSize) {
+		this.QLInit(domain, gamma, hashingFactory, new ConstantValueFunction(qInit), learningRate, new EpsilonGreedy(this, epsilonval), epsilonval, decayepsilonstep, maxEpisodeSize);
 	}
 
 	/**
@@ -339,12 +347,13 @@ public class QLearningRL extends MDPSolver implements QProvider, LearningAgent, 
 		
 		numEpisodesForPlanning = 1;
 		maxQChangeForPlanningTermination = 0.;
-
+		
+		rand = RandomFactory.getMapped(0);
 		
 	}
 
 	protected void QLInit(SADomain domain, double gamma, HashableStateFactory hashingFactory,
-			  QFunction qInitFunction, double learningRate, Policy learningPolicy, double epsilonval,int maxEpisodeSize){
+			  QFunction qInitFunction, double learningRate, Policy learningPolicy, double epsilonval,double decayepsilonstep, int maxEpisodeSize){
 		this.solverInit(domain, gamma, hashingFactory);
 		this.qFunction = new HashMap<HashableState, QLearningStateNode>();
 		this.learningRate = new ConstantLR(learningRate);
@@ -352,9 +361,12 @@ public class QLearningRL extends MDPSolver implements QProvider, LearningAgent, 
 		this.maxEpisodeSize = maxEpisodeSize;
 		this.qInitFunction = qInitFunction;
 		this.epsilongr= epsilonval;
+		this.decayedEpsilonstep = decayepsilonstep;
 		
 		numEpisodesForPlanning = 1;
 		maxQChangeForPlanningTermination = 0.;
+		rand = RandomFactory.getMapped(0);
+		
 }
 	/**
 	 * Sets the {@link RewardFunction}, {@link burlap.mdp.core.TerminalFunction},
@@ -646,15 +658,66 @@ public class QLearningRL extends MDPSolver implements QProvider, LearningAgent, 
 			this.totalNumberOfSteps++;
 		}
 		//System.out.println("End of an episode");
-		System.out.println("Epsilon value = "+ this.epsilongr);
-		this.epsilongr = this.epsilongr*0.9;  // multiply with a value <1 to decay the epsilon value
+		//System.out.println("Epsilon value = "+ this.epsilongr);
+		this.epsilongr = this.epsilongr*decayedEpsilonstep;  // multiply with a value <1 to decay the epsilon value
 		System.out.println("Decay Epsilo Value : End of an episode = "+this.epsilongr);
 		//initialize learningpolicy with new reduced epsilon value in order to reduce exploration after each episode
 		this.learningPolicy= new EpsilonGreedy(this, this.epsilongr);
-		
+		//System.out.println("Total number of steps require in this episode : "+this.totalNumberOfSteps+ "   estepcount =  "+ this.eStepCounter);
+		//System.out.println("Number of action tried : "+ ea.actionSequence.size()+ "Numvber of reward = "+ea.rewardSequence.size());
+		//System.out.println("Action seq"+ ea.actionSequence);
+		//System.out.println("reward seq = "+ ea.rewardSequence);
 		return ea;
 	}
 	
+	
+	/*Brute-force approach - pure random explore until reach goal point- for testing*/
+	public Episode runLearningEpisodeRandom(Environment env, int maxSteps) {
+		//System.out.println("RANDOM EXPLORE");
+		State initialState = env.currentObservation();		
+		Episode ea = new Episode(initialState);
+		HashableState curState = this.stateHash(initialState);
+		
+		eStepCounter = 0;
+		while(!env.isInTerminalState() && (eStepCounter < maxSteps || maxSteps == -1)){
+			List<Action> gas = this.applicableActions(curState.s());
+			int selected = rand.nextInt(gas.size());
+			Action action = gas.get(selected);  //learningPolicy.action(curState.s());
+			
+			QValue curQ = this.getQ(curState, action);  // q table is to only keep track of the visited states. q value is not updated
+			
+			EnvironmentOutcome eo;
+			eo = env.executeAction(action);
+			/*if(!(action instanceof Option)){
+				eo = env.executeAction(action);
+			}
+			else{
+				eo = ((Option)action).control(env, this.gamma);
+			}*/
+			HashableState nextState = this.stateHash(eo.op);
+
+			//manage option specifics
+			double r = eo.r;
+			//double discount = eo instanceof EnvironmentOptionOutcome ? ((EnvironmentOptionOutcome)eo).discount : this.gamma;
+			int stepInc = eo instanceof EnvironmentOptionOutcome ? ((EnvironmentOptionOutcome)eo).numSteps() : 1;
+			eStepCounter += stepInc;
+
+			if(!(action instanceof Option) || !this.shouldDecomposeOptions){
+				ea.transition(action, nextState.s(), r);
+			}
+			else{
+				ea.appendAndMergeEpisodeAnalysis(((EnvironmentOptionOutcome)eo).episode);
+			}
+			
+		    //move on polling environment for its current state in case it changed during processing
+			curState = this.stateHash(env.currentObservation());
+			this.totalNumberOfSteps++;
+		}
+		System.out.println("Epsilon value = "+ this.epsilongr);
+		return ea;
+	}
+	
+	/*print final q-table*/
 	public void printFinalQtable(PrintStream printStream) {
 		printStream.println("\n\n=====================Q-Table========================================");
 		printStream.println("Qtable size = "+this.qFunction.keySet().size());
@@ -878,5 +941,6 @@ public class QLearningRL extends MDPSolver implements QProvider, LearningAgent, 
 	public void deserializeQTable (String path) throws FileNotFoundException {
 		this.qFunction = SerializationUtil.loadQTable(path);
 	}
+
 
 }
