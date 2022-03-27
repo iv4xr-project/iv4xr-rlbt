@@ -21,6 +21,7 @@ public class BurlapConfiguration extends Configuration{
 		parameters.put("burlap.qlearning.epsilonval",(double) 0.5);
 		parameters.put("burlap.qlearning.out_qtable",System.getProperty("user.dir")+"/src/test/resources/output/qtable.yaml");
 		parameters.put("burlap.algorithm", "QLearning");
+		parameters.put("burlap.qlearning.decayedepsilonstep", 0.95);
 	}
 	
 
