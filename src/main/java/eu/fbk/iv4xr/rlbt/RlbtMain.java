@@ -79,26 +79,38 @@ public class RlbtMain{
 				numEpisodes);
 		
 		List<Episode> episodes = new ArrayList<Episode>(numEpisodes);	//list to store results from Q-learning episodes
-		long startTime = System.currentTimeMillis();
+		List<Double> episodeCoverage =  new ArrayList<Double>(numEpisodes);
+		List<Long> episodeTime =  new ArrayList<Long>(numEpisodes);
+
+		//long startTime = System.currentTimeMillis();
 		
 		int maxActionsPerEpisode = (int)lrConfiguration.getParameterValue("labrecruits.max_actions_per_episode");
 		/*------------Training - start running episodes------------------------*/
 		labRecruitsRlEnvironment.startAgentEnvironment();
-		for(int i = 0; i < numEpisodes; i++){
+		for(int i = 0; i < numEpisodes; i++){			
 			labRecruitsRlEnvironment.resetStateMemory();   // reset state buffer at the beginning of an episode
+			long startTime = System.currentTimeMillis();
 			episodes.add(agent.runLearningEpisode(labRecruitsRlEnvironment, maxActionsPerEpisode));
+			long estimatedTime = System.currentTimeMillis() - startTime;
+			System.out.println("Time for this episode  : "+estimatedTime);
+			
+			double episodecov = labRecruitsRlEnvironment.CalculateEpisodeCoverage();  /*calculate coverage after finishing an episode*/
+			/*store time and coverage per episode*/
+			episodeCoverage.add(episodecov);
+			episodeTime.add(estimatedTime);
+			
 			labRecruitsRlEnvironment.resetEnvironment();  /*reset environment*/
 		}
 		
 		/*------------Save------------------------*/
-		long estimatedTime = System.currentTimeMillis() - startTime;
-		System.out.println("Time - Training : "+estimatedTime);
+		//long estimatedTime = System.currentTimeMillis() - startTime;
+		//System.out.println("Time - Training : "+estimatedTime);
 		agent.printFinalQtable(System.out);
 		String qtableOutputFile = outputDir + File.separator + "qtable.ser"; // (String)burlapConfiguration.getParameterValue("burlap.qlearning.out_qtable");
 		agent.serializeQTable(qtableOutputFile);
 		agent.printFinalQtable(new PrintStream(qtableOutputFile + ".txt"));
 		String episodesummaryfile = outputDir + File.separator + "episodeSummary.txt"; 
-		SaveEpisodeSummary(episodes, episodesummaryfile); //store episode summary (number of actions and reward per episode)
+		SaveEpisodeSummary(episodes, episodesummaryfile, episodeCoverage, episodeTime);  // store episode summary (number of actions and reward per episode)
 				
 		String episodesBaseName = outputDir + File.separator + "episode";
 		SerializationUtil.serializeEpisodes(episodes, episodesBaseName );
@@ -106,25 +118,34 @@ public class RlbtMain{
 		return episodes;
 	}
 	
-private static void SaveEpisodeSummary(List<Episode> episodes, String outfile) throws FileNotFoundException {
-	PrintStream ps =  new PrintStream(outfile);
-	/*print number of actions taken per episode*/
-	for (int i=0;i<episodes.size();i++) {
-		ps.print(episodes.get(i).actionSequence.size()+" ");
-	}
-	ps.println();
-	/*print reward summary per episode*/
-	for (int i=0;i<episodes.size();i++) {
-		double sumreward=0;
-		for (int j=0;j<episodes.get(i).rewardSequence.size();j++) {
-			sumreward =sumreward +episodes.get(i).rewardSequence.get(j);
+	private static void SaveEpisodeSummary(List<Episode> episodes, String outfile, List<Double> episodeCoverage, List<Long> episodeTime) throws FileNotFoundException {
+		PrintStream ps =  new PrintStream(outfile);
+		/*print number of actions taken per episode*/
+		for (int i=0;i<episodes.size();i++) {
+			ps.print(episodes.get(i).actionSequence.size()+",");
 		}
-		ps.print(sumreward+" ");
-	}
-	ps.println();
-	
-	ps.close();
-	} //end of function
+		ps.println();
+		/*print reward summary per episode*/
+		for (int i=0;i<episodes.size();i++) {
+			double sumreward=0;
+			for (int j=0;j<episodes.get(i).rewardSequence.size();j++) {
+				sumreward =sumreward +episodes.get(i).rewardSequence.get(j);
+			}
+			ps.print(sumreward+", ");
+		}
+		ps.println();
+		/*print coverage per episode*/
+		for (int i=0;i<episodes.size();i++) {
+			ps.print(episodeCoverage.get(i)+",");
+		}
+		ps.println();
+		
+		for (int i=0;i<episodes.size();i++) {
+			ps.print(episodeTime.get(i)+",");
+		}
+		ps.println();
+		ps.close();
+		} //end of function
 
 /*execute training with pure random explore*/
 private static List<Episode> executeRandomTrainingOnLabRecruits() throws InterruptedException, FileNotFoundException {
@@ -146,26 +167,37 @@ private static List<Episode> executeRandomTrainingOnLabRecruits() throws Interru
 				numEpisodes);
 		
 		List<Episode> episodes = new ArrayList<Episode>(numEpisodes);	//list to store results from Q-learning episodes
-		long startTime = System.currentTimeMillis();
+		List<Double> episodeCoverage =  new ArrayList<Double>(numEpisodes);
+		List<Long> episodeTime =  new ArrayList<Long>(numEpisodes);
+
+		//long startTime = System.currentTimeMillis();
 		
 		int maxActionsPerEpisode = (int)lrConfiguration.getParameterValue("labrecruits.max_actions_per_episode");
 		/*------------Training - start running episodes------------------------*/
 		labRecruitsRlEnvironment.startAgentEnvironment();
-		for(int i = 0; i < numEpisodes; i++){
+		for(int i = 0; i < numEpisodes; i++){			
 			labRecruitsRlEnvironment.resetStateMemory();   // reset state buffer at the beginning of an episode
+			long startTime = System.currentTimeMillis();
 			episodes.add(agent.runLearningEpisodeRandom(labRecruitsRlEnvironment, maxActionsPerEpisode));
+			long estimatedTime = System.currentTimeMillis() - startTime;
+			System.out.println("Time for this episode  : "+estimatedTime);
+			
+			double episodecov = labRecruitsRlEnvironment.CalculateEpisodeCoverage();  /*calculate coverage after finishing an episode*/
+			/*store time and coverage per episode*/
+			episodeCoverage.add(episodecov);
+			episodeTime.add(estimatedTime);
+			
 			labRecruitsRlEnvironment.resetEnvironment();  /*reset environment*/
 		}
 		/*------------Save------------------------*/
-		long estimatedTime = System.currentTimeMillis() - startTime;
-		System.out.println("Time - Training : "+estimatedTime);
+		//long estimatedTime = System.currentTimeMillis() - startTime;
+		//System.out.println("Time - Training : "+estimatedTime);
 		agent.printFinalQtable(System.out);
 		String qtableOutputFile = outputDir + File.separator + "qtable.ser"; // (String)burlapConfiguration.getParameterValue("burlap.qlearning.out_qtable");
 		agent.serializeQTable(qtableOutputFile);
 		agent.printFinalQtable(new PrintStream(qtableOutputFile + ".txt"));
 		String episodesummaryfile = outputDir + File.separator + "episodeSummary.txt"; 
-		SaveEpisodeSummary(episodes, episodesummaryfile);  // store episode summary (number of actions and reward per episode)
-
+		SaveEpisodeSummary(episodes, episodesummaryfile, episodeCoverage, episodeTime);  // store episode summary (number of actions and reward per episode)
 		
 		String episodesBaseName = outputDir + File.separator + "episode";
 		SerializationUtil.serializeEpisodes(episodes, episodesBaseName );
