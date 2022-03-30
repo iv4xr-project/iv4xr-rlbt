@@ -7,11 +7,20 @@ import static nl.uu.cs.aplib.AplibEDSL.*;
 import static nl.uu.cs.aplib.AplibEDSL.SEQ;
 import static nl.uu.cs.aplib.AplibEDSL.goal;
 
+import java.io.BufferedReader;
+import java.io.File;
+import java.io.FileReader;
+import java.io.IOException;
+import java.nio.file.Paths;
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Scanner;
 import java.util.Set;
+import java.util.StringTokenizer;
 
 import agents.LabRecruitsTestAgent;
 import agents.tactics.GoalLib;
@@ -51,6 +60,8 @@ import world.LabWorldModel;
  */
 public class LabRecruitsRLEnvironment implements Environment {
 
+	//temporary variable to test connection coverage
+	public static boolean functionalCoverageFlag =false;
 	
 	public static boolean USE_GRAPHICS = false;     /*for running Labrecruit game with graphic*/
     
@@ -91,6 +102,11 @@ public class LabRecruitsRLEnvironment implements Environment {
 	private int currentEpisode = 1;
 	private int healthpenalty;
 	
+	private HashMap<String, Integer> entityList = null;
+	
+	private double FuncCovReward=10;     // reward for exploring a new state of an entity
+	
+	
 	public LabRecruitsRLEnvironment(LRConfiguration lrConfiguration, StateDistance stateDistance) {
 		maxTicksPerAction = (int)lrConfiguration.getParameterValue("labrecruits.max_ticks_per_action");
 		MAX_CYCLES = (int) lrConfiguration.getParameterValue("labrecruits.max_actions_per_episode");
@@ -115,6 +131,10 @@ public class LabRecruitsRLEnvironment implements Environment {
 		this.STAGNATION_THRESHOLD = (int) lrConfiguration.getParameterValue("labrecruits.max_actions_since_last_new_state");
 		//this.healthScore =100;
 		this.healthpenalty=0;
+		
+		//this.entityList = new HashMap<String, Integer>();
+		
+		functionalCoverageFlag = (Boolean) lrConfiguration.getParameterValue("labrecruits.functionalCoverage");  // temporary variable
 	}
 	
 	private RlbtRewardFunction getRewardFunction(SearchMode searchMode, StateDistance stateDistance) {
@@ -150,8 +170,56 @@ public class LabRecruitsRLEnvironment implements Environment {
 	public void resetStateMemory() {
 		//this.healthScore=100;
 		this.healthpenalty=0;
+		//this.entityList = new HashMap<String, Integer>();
 		this.rewardFunction.resetStateBuffer();	
+		/*for testing functional coverage*/
+		if(functionalCoverageFlag==true) {
+			//this.entityList = new HashMap<String, Integer>();
+			ResetTestingGoal(labRecruitsLevel,labRecruitsLevelFolder);
+			//printGoalEntities();
+		}
 	}
+	private void printGoalEntities() {
+		System.out.println("Printing Goal Entity List - functional coverage testing");
+		for (String k : entityList.keySet()) {
+			System.out.println("entity = "+k+"   visit Frequency= "+entityList.get(k));
+		}		
+	}
+	
+	/*RefreshTestingGoal*/
+	public void ResetTestingGoal(String levelName, String levelFolder) {
+		for (String k : entityList.keySet()) {
+			entityList.put(k, 0);
+		}
+	}
+
+	/*load entities*/
+	public void LoadTestingGoal(String levelName, String levelFolder) {
+		String fullPath = Paths.get(levelFolder, levelName + ".csv").toAbsolutePath().toString();
+		
+	    String line = "";
+	    String splitBy = ",";
+	    try {
+	      //parsing a CSV file into BufferedReader class constructor  
+	      BufferedReader br = new BufferedReader(new FileReader(fullPath));
+	      while ((line = br.readLine()) != null)
+	      {
+	    	if (line.startsWith("|w") || line.startsWith("|f")|| line.startsWith("w")||line.startsWith("f"))
+	    		break;
+	        String[] token = line.split(splitBy);
+	        for (int i=0;i<token.length;i++) {
+	        	String ent = token[i]+" (false)";
+	        	entityList.put(ent,0);
+	        	ent = token[i]+" (true)";
+	        	entityList.put(ent,0);	        	
+	        }
+	      }
+	    }
+	    catch(IOException e) {
+	      e.printStackTrace();
+	    }
+	}
+	
 	
 	/*start RL environment*/
 	public void startAgentEnvironment () throws InterruptedException {
@@ -160,7 +228,12 @@ public class LabRecruitsRLEnvironment implements Environment {
 		//this.healthScore=100;
 		
 		startTestServer();
-
+		
+		/*for testing functional coverage*/
+		if(functionalCoverageFlag==true)
+			this.entityList = new HashMap<String, Integer>();
+			LoadTestingGoal(labRecruitsLevel,labRecruitsLevelFolder);
+		
 		LabRecruitsConfig gameConfig = new LabRecruitsConfig(labRecruitsLevel,labRecruitsLevelFolder);
 		gameConfig.host = "localhost"; // "192.168.29.120";
 		labRecruitsAgentEnvironment = new LabRecruitsEnvironment(gameConfig);
@@ -245,8 +318,7 @@ public class LabRecruitsRLEnvironment implements Environment {
 	
 	private void startTestServer (){
 		//String labRecruitesExeRootDir = System.getProperty("user.dir") ;
-		
-		
+	
 		labRecruitsTestServer = new LabRecruitsTestServer(
 				USE_GRAPHICS,
 				Platform.PathToLabRecruitsExecutable(labRecruitesExeRootDir)); 
@@ -274,8 +346,10 @@ public class LabRecruitsRLEnvironment implements Environment {
 		}
 		// before making the observation of the state, 
 		// first force the agent to explore the surrounding for changes and refresh its belief (state)
+		DPrint.ul("-------START EXPLORATION  - after an action to update agent's view---------------------------------");
 		GoalStructure goal = explore();
 		doAction(goal);
+		DPrint.ul("-------END EXPLORATION ---------------------------------");
 		
 		LabRecruitsState currentState = new LabRecruitsState(false);
 		BeliefState beliefState = testAgent.getState();
@@ -332,10 +406,16 @@ public class LabRecruitsRLEnvironment implements Environment {
 			
 		currentState = (LabRecruitsState) currentObservation();  //update current state	after executing the chosen action
 		//DPrint.ul ("Updated current state: "+ currentState.toString());
-		
+		//System.out.println(entityList.size());
 		boolean terminated = isFinal(currentState);
 		//DPrint.ul("is this the final state:" + terminated);
 		lastReward = getReward(oldState, currentState, action);
+		
+		if(functionalCoverageFlag==true) {  // for functional coverage testing
+			double rewardfunccov=0;
+			rewardfunccov= UpdateGoalList(currentState); 
+			lastReward =lastReward+rewardfunccov;
+		}
 		//if(testAgent.getState().worldmodel().health<80) {
 		//	this.healthpenalty=this.healthpenalty+1;
 		//}
@@ -350,12 +430,34 @@ public class LabRecruitsRLEnvironment implements Environment {
 		return outcome;
 	}
 
+	
+	private double UpdateGoalList(LabRecruitsState currentState2) {	
+		double rewardfuncCov=0;
+		//System.out.println(currentState2.toString());
+		String strtemp = currentState2.toString().replace("[", "");
+		String str =  strtemp.replace("]", "");
+		//System.out.println(str);
+		StringTokenizer st = new StringTokenizer(str,",");  
+	     while (st.hasMoreTokens()) {  
+	    	 String entitystr =st.nextToken();
+	    	 if(entityList.containsKey(entitystr)) {
+	    		 int freq= entityList.get(entitystr);
+	    		 freq =freq+1;
+	    		 if(freq==1) {   // a new state of this entity is observed, the agent is obtained small reward. This will encourage him to explore new states of entities
+	    			 rewardfuncCov = FuncCovReward;
+	    		 }
+	    		 entityList.put(entitystr, freq);  // update frequency
+	    		 //System.out.println("ENTITY FOUND" + entitystr+"   freq ="+entityList.get(entitystr));
+	    	 }
+	         //System.out.println(entitystr);  
+	     }
+	     return rewardfuncCov;	     
+	}
+
 	// for testing q-learning agent after training
 	public void EvaluateQLearningAgent(Map<HashableState, QLearningStateNode> qFunction) {
 	
 		DPrint.ul("\n\nTESTING :----------Testing Q learning agent----- ------- : ");
-		
-		
 	
 		// get the final q 
 				System.out.println("key set:  "+qFunction.keySet().size());
@@ -561,6 +663,7 @@ public class LabRecruitsRLEnvironment implements Environment {
 		return reward; 
 	}
 
+
 //	@Override
 	public boolean isFinal(State state) {
 		LabRecruitsState labRecruitsState = (LabRecruitsState)state;
@@ -580,15 +683,56 @@ public class LabRecruitsRLEnvironment implements Environment {
 			}
 		case CoverageOriented:
 			CoverageOrientedRewardFunction rFunction = (CoverageOrientedRewardFunction)rewardFunction;
-			System.out.println("Actions since last new state: " + rFunction.actionsSinceLastNewState());
-			if (rFunction.actionsSinceLastNewState() >= STAGNATION_THRESHOLD) {
-				return true;
-			}else {
-				return false;
+			if(functionalCoverageFlag==true) {
+				System.out.println("Functional coverage testing");
+				if(entityList.size()>0 && HasAllGoalSatisfied()==true)
+					return true;
+				else
+					return false;
+			}
+			else {
+				System.out.println("Actions since last new state: " + rFunction.actionsSinceLastNewState());
+				if (rFunction.actionsSinceLastNewState() >= STAGNATION_THRESHOLD) {
+					return true;
+				}else {
+					return false;
+				}
 			}
 		default:
 			throw new RuntimeException("Unknown search mode: " + searchMode);
 		}
 	}
+
+/*check for functional coverage  - if all the goal listed at the begining are satisfied*/
+private boolean HasAllGoalSatisfied() { // if no 0 frequency value exists, meaning every entity has explored at least once
+	System.out.println("entity list size = "+entityList.size());
+	if(entityList.containsValue(0)) {
+		//printGoalEntities();
+		double countzero = Collections.frequency(entityList.values(), 0);
+		double coveragecount =  entityList.size() - countzero;
+		double coverageRatio = (coveragecount/(double)entityList.size())*100;
+		System.out.println("Not all states are visited, Visited entity states " +coveragecount+" out of "+entityList.size()+" entity states, Coverate percentage = "+ coverageRatio+"%");
+		return false;
+		}
+	else {
+		System.out.println("Finish -All entitity is covered at least once. 100% entity coverage");
+		printGoalEntities();		
+		return true;
+	}
+}
+
+/*calculate coverage percentage for an episode*/
+public double CalculateEpisodeCoverage() {
+	double coverageRatio = 0;
+	if (functionalCoverageFlag==true) {
+		System.out.println("End episode - Calculate coverage ");
+		printGoalEntities();	
+		double countzero = Collections.frequency(entityList.values(), 0);
+		double coveragecount =  entityList.size() - countzero;
+		coverageRatio = (coveragecount/(double)entityList.size())*100;
+		System.out.println("Coverage calculation - Visited entity states " +coveragecount+" out of "+entityList.size()+" entity states, Coverate percentage = "+ coverageRatio+"%");
+		}
+	return coverageRatio;
+	}/*end of the function*/
 	
 }
