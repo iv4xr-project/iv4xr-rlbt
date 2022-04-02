@@ -230,9 +230,10 @@ public class LabRecruitsRLEnvironment implements Environment {
 		startTestServer();
 		
 		/*for testing functional coverage*/
-		if(functionalCoverageFlag==true)
+		if(functionalCoverageFlag==true){
 			this.entityList = new HashMap<String, Integer>();
 			LoadTestingGoal(labRecruitsLevel,labRecruitsLevelFolder);
+		}
 		
 		LabRecruitsConfig gameConfig = new LabRecruitsConfig(labRecruitsLevel,labRecruitsLevelFolder);
 		gameConfig.host = "localhost"; // "192.168.29.120";
