@@ -236,6 +236,8 @@ public class LabRecruitsRLEnvironment implements Environment {
 		}
 		
 		LabRecruitsConfig gameConfig = new LabRecruitsConfig(labRecruitsLevel,labRecruitsLevelFolder);
+		float viewDistance = 16;
+		gameConfig.replaceAgentViewDistance(viewDistance);
 		gameConfig.host = "localhost"; // "192.168.29.120";
 		labRecruitsAgentEnvironment = new LabRecruitsEnvironment(gameConfig);
 		labRecruitsAgentEnvironment.startSimulation();
@@ -342,9 +344,9 @@ public class LabRecruitsRLEnvironment implements Environment {
 	public State currentObservation() {	
 		//LabWorldModel wom = null ;
 		
-		if (this.currentState != null) {
-			DPrint.ul("Current Observation state of Agent before explore :"+ this.currentState.toString() );
-		}
+//		if (this.currentState != null) {
+//			DPrint.ul("Current Observation state of Agent before explore :"+ this.currentState.toString() );
+//		}
 		// before making the observation of the state, 
 		// first force the agent to explore the surrounding for changes and refresh its belief (state)
 		DPrint.ul("-------START EXPLORATION  - after an action to update agent's view---------------------------------");
@@ -389,13 +391,13 @@ public class LabRecruitsRLEnvironment implements Environment {
 	
 	@Override
 	public EnvironmentOutcome executeAction(Action a) {
-		DPrint.ul("Inside Execute an action  ------- : ");
+//		DPrint.ul("Inside Execute an action  ------- : ");
 		State oldState = currentState; // state before execution
 		//DPrint.ul ("Old state: "+ oldState.toString());
 		
 		LabRecruitsAction action = (LabRecruitsAction)a;  // this Action a should be mapped into a goal that the agent can execute
 		GoalStructure subGoal = getActionGoal(action.getActionId(), action.getInteractedEntity().type);
-		DPrint.ul("Action selected : "+ action.getActionId()+ " interacted entity and type : "+action.getInteractedEntity()+"  "+action.getInteractedEntity().type);
+//		DPrint.ul("Action selected : "+ action.getActionId()+ " interacted entity and type : "+action.getInteractedEntity()+"  "+action.getInteractedEntity().type);
 				
 		if (subGoal != null) {
 			doAction(subGoal);
@@ -428,6 +430,10 @@ public class LabRecruitsRLEnvironment implements Environment {
 				" Action: " + action.actionName() + " Reward: " + lastReward + 
 				" Goal status: " + (subGoal != null?subGoal.getStatus().toString():" NULL"));
 		DPrint.ul("Health penalty = "+this.healthpenalty);
+		
+		// each action consumes budget
+		updateCycles++;
+		
 		return outcome;
 	}
 
@@ -579,9 +585,6 @@ public class LabRecruitsRLEnvironment implements Environment {
 		     //          + testAgent.getState().id + " @" + testAgent.getState().worldmodel.position) ;
 			tickCounter++;
 		}
-		
-		// each action consumes budget
-		updateCycles++;
 	}
 	
 	@Override
@@ -704,36 +707,36 @@ public class LabRecruitsRLEnvironment implements Environment {
 		}
 	}
 
-/*check for functional coverage  - if all the goal listed at the begining are satisfied*/
-private boolean HasAllGoalSatisfied() { // if no 0 frequency value exists, meaning every entity has explored at least once
-	System.out.println("entity list size = "+entityList.size());
-	if(entityList.containsValue(0)) {
-		//printGoalEntities();
-		double countzero = Collections.frequency(entityList.values(), 0);
-		double coveragecount =  entityList.size() - countzero;
-		double coverageRatio = (coveragecount/(double)entityList.size())*100;
-		System.out.println("Not all states are visited, Visited entity states " +coveragecount+" out of "+entityList.size()+" entity states, Coverate percentage = "+ coverageRatio+"%");
-		return false;
+	/*check for functional coverage  - if all the goal listed at the begining are satisfied*/
+	private boolean HasAllGoalSatisfied() { // if no 0 frequency value exists, meaning every entity has explored at least once
+		System.out.println("entity list size = "+entityList.size());
+		if(entityList.containsValue(0)) {
+			//printGoalEntities();
+			double countzero = Collections.frequency(entityList.values(), 0);
+			double coveragecount =  entityList.size() - countzero;
+			double coverageRatio = (coveragecount/(double)entityList.size())*100;
+			System.out.println("Not all states are visited, Visited entity states " +coveragecount+" out of "+entityList.size()+" entity states, Coverate percentage = "+ coverageRatio+"%");
+			return false;
+			}
+		else {
+			System.out.println("Finish -All entitity is covered at least once. 100% entity coverage");
+			printGoalEntities();		
+			return true;
 		}
-	else {
-		System.out.println("Finish -All entitity is covered at least once. 100% entity coverage");
-		printGoalEntities();		
-		return true;
 	}
-}
-
-/*calculate coverage percentage for an episode*/
-public double CalculateEpisodeCoverage() {
-	double coverageRatio = 0;
-	if (functionalCoverageFlag==true) {
-		System.out.println("End episode - Calculate coverage ");
-		printGoalEntities();	
-		double countzero = Collections.frequency(entityList.values(), 0);
-		double coveragecount =  entityList.size() - countzero;
-		coverageRatio = (coveragecount/(double)entityList.size())*100;
-		System.out.println("Coverage calculation - Visited entity states " +coveragecount+" out of "+entityList.size()+" entity states, Coverate percentage = "+ coverageRatio+"%");
-		}
-	return coverageRatio;
+	
+	/*calculate coverage percentage for an episode*/
+	public double CalculateEpisodeCoverage() {
+		double coverageRatio = 0;
+		if (functionalCoverageFlag==true) {
+			System.out.println("End episode - Calculate coverage ");
+			printGoalEntities();	
+			double countzero = Collections.frequency(entityList.values(), 0);
+			double coveragecount =  entityList.size() - countzero;
+			coverageRatio = (coveragecount/(double)entityList.size())*100;
+			System.out.println("Coverage calculation - Visited entity states " +coveragecount+" out of "+entityList.size()+" entity states, Coverate percentage = "+ coverageRatio+"%");
+			}
+		return coverageRatio;
 	}/*end of the function*/
 	
 }

@@ -145,10 +145,10 @@ public class RlbtMain{
 		}
 		ps.println();
 		ps.close();
-		} //end of function
+	} //end of function
 
-/*execute training with pure random explore*/
-private static List<Episode> executeRandomTrainingOnLabRecruits() throws InterruptedException, FileNotFoundException {
+	/*execute training with pure random explore*/
+	private static List<Episode> executeRandomTrainingOnLabRecruits() throws InterruptedException, FileNotFoundException {
 		
 		LabRecruitsRLEnvironment labRecruitsRlEnvironment = new LabRecruitsRLEnvironment(lrConfiguration, new JaccardDistance());
 		DomainGenerator lrDomainGenerator = new LabRecruitsDomainGenerator();
