@@ -62,6 +62,7 @@ public class LabRecruitsRLEnvironment implements Environment {
 
 	//temporary variable to test connection coverage
 	public static boolean functionalCoverageFlag =false;
+	private static boolean AgentDeadFlag = false;
 	
 	public static boolean USE_GRAPHICS = false;     /*for running Labrecruit game with graphic*/
     
@@ -133,7 +134,7 @@ public class LabRecruitsRLEnvironment implements Environment {
 		this.healthpenalty=0;
 		
 		//this.entityList = new HashMap<String, Integer>();
-		
+		AgentDeadFlag = false;
 		functionalCoverageFlag = (Boolean) lrConfiguration.getParameterValue("labrecruits.functionalCoverage");  // temporary variable
 	}
 	
@@ -223,6 +224,7 @@ public class LabRecruitsRLEnvironment implements Environment {
 	
 	/*start RL environment*/
 	public void startAgentEnvironment () throws InterruptedException {
+		AgentDeadFlag= false;
 		lastReward = 0;
 		updateCycles = 0;
 		//this.healthScore=100;
@@ -376,8 +378,14 @@ public class LabRecruitsRLEnvironment implements Environment {
 		// add the objects into the LR agent state to build the next state
 		for (WorldEntity worldEntity : beliefState.knownEntities()){
 			worldEntity.timestamp=0;
-			currentState.addObject(new LabRecruitsEntityObject(worldEntity));
+			//System.out.println("Entity type on current observation = "+ worldEntity.type);
+			if (worldEntity.type != "FireHazard")
+			{	
+				currentState.addObject(new LabRecruitsEntityObject(worldEntity));
+			}
 		}
+		if(currentState.numObjects()==0) {
+		System.out.println("Observation empty , num obj = "+currentState.numObjects());}
 		DPrint.ul("Current Observation state of Agent after explore :"+ currentState.toString() );
 		return currentState;
 	}
@@ -413,12 +421,22 @@ public class LabRecruitsRLEnvironment implements Environment {
 		boolean terminated = isFinal(currentState);
 		//DPrint.ul("is this the final state:" + terminated);
 		lastReward = getReward(oldState, currentState, action);
-		
+				
 		if(functionalCoverageFlag==true) {  // for functional coverage testing
 			double rewardfunccov=0;
 			rewardfunccov= UpdateGoalList(currentState); 
 			lastReward =lastReward+rewardfunccov;
 		}
+		
+		/*big penalty if agent dies and end the episode*/
+		if (testAgent.getState().worldmodel().health <= 0)
+		{
+			//System.out.println("----EMERGENCY NOTICE : AGENT DIED. Health point =  "+ testAgent.getState().worldmodel().health);
+			lastReward =lastReward - 100*100;
+			AgentDeadFlag= true;	
+			DPrint.ul("STOP SIMULAITON - AGENT DIED = "+testAgent.getState().worldmodel().health );
+		}
+		
 		//if(testAgent.getState().worldmodel().health<80) {
 		//	this.healthpenalty=this.healthpenalty+1;
 		//}
@@ -429,7 +447,7 @@ public class LabRecruitsRLEnvironment implements Environment {
 		DPrint.ul ("From: " + oldState.toString() + "\n To: " + currentState.toString() + 
 				" Action: " + action.actionName() + " Reward: " + lastReward + 
 				" Goal status: " + (subGoal != null?subGoal.getStatus().toString():" NULL"));
-		DPrint.ul("Health penalty = "+this.healthpenalty);
+		//DPrint.ul("Health penalty = "+this.healthpenalty);
 		
 		// each action consumes budget
 		updateCycles++;
@@ -594,7 +612,7 @@ public class LabRecruitsRLEnvironment implements Environment {
 
 	@Override
 	public boolean isInTerminalState() {
-		boolean isFinal = isFinal(currentState) || updateCycles >= MAX_CYCLES;
+		boolean isFinal = isFinal(currentState) || updateCycles >= MAX_CYCLES || AgentDeadFlag==true;
 		if (isFinal) {
 			System.out.println("Finished Episode: " + currentEpisode);
 		}
@@ -607,6 +625,7 @@ public class LabRecruitsRLEnvironment implements Environment {
 		// TODO agent environment should be restarted only if this is not the last trial,
 		// for now we simply call start agent environment, but should be checked
 		// if last trial, no start.
+		AgentDeadFlag =false;
 		currentEpisode ++;
 		stopTestServer();
 		
