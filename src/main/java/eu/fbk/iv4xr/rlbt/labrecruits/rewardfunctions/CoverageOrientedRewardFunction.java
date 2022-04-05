@@ -25,6 +25,8 @@ public class CoverageOrientedRewardFunction extends AbstractRlbtRewardFunction {
 	HashMap<String, Integer> visitedStates = null;//new HashMap<String, Integer>();
 	int stateOccuranceThreshold =4;
 	int actionsSinceLastNewState = 0;
+	int HealthScoreThreshold =70;  // considering highest health score as 100
+	int FullHealthScore=100;
 	
 	public CoverageOrientedRewardFunction(StateDistance stateDistanceFunction) {
 		super(stateDistanceFunction);
@@ -81,6 +83,10 @@ public class CoverageOrientedRewardFunction extends AbstractRlbtRewardFunction {
 				//System.out.println("Action  = "+action.actionName()+" agent did not move enough to get more position,  penalty = "+reward);
 				//reward = -1;
 			}
+			//third - penalize for reducing health status
+			double healthloss =  (double)(FullHealthScore - agentBeliefState.worldmodel().health);
+			//giving penalty for any health loss
+			reward =  reward - healthloss;   // penalty as the absolute value of health loss
 		}
 		return reward;
 	}
