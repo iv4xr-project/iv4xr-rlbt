@@ -10,6 +10,7 @@ import burlap.mdp.core.action.Action;
 import burlap.mdp.core.state.State;
 import eu.fbk.iv4xr.rlbt.distance.StateDistance;
 import eu.fbk.iv4xr.rlbt.rewardfunction.AbstractRlbtRewardFunction;
+import eu.iv4xr.framework.mainConcepts.TestAgent;
 import eu.iv4xr.framework.spatial.Vec3;
 import world.BeliefState;
 
@@ -23,6 +24,8 @@ public class GoalOrientedRewardFunction extends AbstractRlbtRewardFunction {
 	//store visited states from environment in an episode
 	HashMap<String, Integer> visitedStates = null;//new HashMap<String, Integer>();
 	int stateOccuranceThreshold =4;
+	int HealthScoreThreshold =70;  // considering highest health score as 100
+	int FullHealthScore=100;
 	
 	public GoalOrientedRewardFunction(StateDistance stateDistanceFunction) {
 		super(stateDistanceFunction);
@@ -32,7 +35,7 @@ public class GoalOrientedRewardFunction extends AbstractRlbtRewardFunction {
 	/*reset the state memory buffer*/
 	@Override
 	public void resetStateBuffer() {
-		visitedStates = new HashMap<String, Integer>();		
+		visitedStates = new HashMap<String, Integer>();	
 	}
 	
 	@Override
@@ -78,9 +81,19 @@ public class GoalOrientedRewardFunction extends AbstractRlbtRewardFunction {
 				//System.out.println("Action  = "+action.actionName()+" agent did not move enough to get more position,  penalty = "+reward);
 				//reward = -1;
 			}
+			
+			//third - penalize for reducing health status
+			double healthloss =  (double)(FullHealthScore - agentBeliefState.worldmodel().health);
+			//giving penalty for any health loss
+			reward =  reward - healthloss;   // penalty as the absolute value of health loss
+
+			//if(agentBeliefState.worldmodel().health < HealthScoreThreshold) {
+			//	reward =reward-PENALTY*2;
+			//}
 		}
 		return reward;
 	}
+
 
 	/** 
 	 * Check the memory of visited states and returns the number of times this state is visited
