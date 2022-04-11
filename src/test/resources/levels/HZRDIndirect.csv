@@ -1,4 +1,4 @@
-﻿b1.1,d1,,,,,,,,,,,,,
+b1.1,d1,,,,,,,,,,,,,
 b1.2,d1,,,,,,,,,,,,,
 b4.1,d4,,,,,,,,,,,,,
 b4.2,d4,,,,,,,,,,,,,
@@ -14,7 +14,7 @@ b8.2,d8,,,,,,,,,,,,,
 w,f:t>n,f:t>n,f:t>n,f,f,f,f,f,f:r>e,w,w,w,f,w
 w,f,f,f,f,f,f,f,f,w,f,f,f,f,w
 w,f,f,f,f,f,f,f,f,f,f,f,f,f,w
-w,f:a^0,f,f,f,f,f,f,f,f,f,f,f,f,f:d>w^d2
+w,f:a^agent1,f,f,f,f,f,f,f,f,f,f,f,f,f:d>w^d2
 w,f,f,f,f,f,f,f,f,f,f,f,f,f,w
 w,f,f,f,f,f,f,f:dhf,f,f,f,f,f,f,w
 w,f:t>s,f:t>s,f:t>s,f,f,f:dhf,f,f,f,f,f,f,f,w

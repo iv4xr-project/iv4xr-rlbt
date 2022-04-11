@@ -175,7 +175,7 @@ public class LabRecruitsRLEnvironment implements Environment {
 		this.rewardFunction.resetStateBuffer();	
 		/*for testing functional coverage*/
 		if(functionalCoverageFlag==true) {
-			//this.entityList = new HashMap<String, Integer>();
+//			this.entityList = new HashMap<String, Integer>();
 			ResetTestingGoal(labRecruitsLevel,labRecruitsLevelFolder);
 			//printGoalEntities();
 		}
@@ -238,8 +238,9 @@ public class LabRecruitsRLEnvironment implements Environment {
 		}
 		
 		LabRecruitsConfig gameConfig = new LabRecruitsConfig(labRecruitsLevel,labRecruitsLevelFolder);
-		float viewDistance = 16;
+		float viewDistance = 20;
 		gameConfig.replaceAgentViewDistance(viewDistance);
+		gameConfig.agent_speed = 0.5f;
 		gameConfig.host = "localhost"; // "192.168.29.120";
 		labRecruitsAgentEnvironment = new LabRecruitsEnvironment(gameConfig);
 		labRecruitsAgentEnvironment.startSimulation();
@@ -296,7 +297,9 @@ public class LabRecruitsRLEnvironment implements Environment {
 			
 			//testAgent.getState().getMemorizedPath().clear();
 		} else if(entityType.contentEquals(LabEntity.DOOR)) {
-			goal = SEQ (GoalLib.entityStateRefreshed(entityId),
+//			float THRESHOLD_DISTANCE_TO_GOALFLAG = 0.5f;
+			goal = SEQ (//GoalLib.atBGF(entityId, THRESHOLD_DISTANCE_TO_GOALFLAG, true),
+					GoalLib.entityStateRefreshed(entityId),
 					GoalLib.entityInCloseRange(entityId),
 					GoalLib.entityInvariantChecked(testAgent,
 	        		entityId, 
@@ -379,7 +382,8 @@ public class LabRecruitsRLEnvironment implements Environment {
 		for (WorldEntity worldEntity : beliefState.knownEntities()){
 			worldEntity.timestamp=0;
 			//System.out.println("Entity type on current observation = "+ worldEntity.type);
-			if (worldEntity.type != "FireHazard")
+			if (worldEntity.type.contentEquals(LabEntity.SWITCH)
+					|| worldEntity.type.contentEquals(LabEntity.DOOR)) // != "FireHazard")
 			{	
 				currentState.addObject(new LabRecruitsEntityObject(worldEntity));
 			}
@@ -431,6 +435,7 @@ public class LabRecruitsRLEnvironment implements Environment {
 		/*big penalty if agent dies and end the episode*/
 		if (testAgent.getState().worldmodel().health <= 0)
 		{
+			terminated = true;
 			//System.out.println("----EMERGENCY NOTICE : AGENT DIED. Health point =  "+ testAgent.getState().worldmodel().health);
 			lastReward =lastReward - 100*100;
 			AgentDeadFlag= true;	
