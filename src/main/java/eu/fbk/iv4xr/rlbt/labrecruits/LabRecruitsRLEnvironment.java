@@ -198,7 +198,7 @@ public class LabRecruitsRLEnvironment implements Environment {
 	public void LoadTestingGoal(String levelName, String levelFolder) {
 		String fullPath = Paths.get(levelFolder, levelName + ".csv").toAbsolutePath().toString();
 		
-	    String line = "";
+	    /*String line = "";
 	    String splitBy = ",";
 	    try {
 	      //parsing a CSV file into BufferedReader class constructor  
@@ -215,6 +215,37 @@ public class LabRecruitsRLEnvironment implements Environment {
 	        	entityList.put(ent,0);	        	
 	        }
 	      }
+	    }*/
+		
+		String line = "";
+	    String splitBy = ",";
+	    String secondsplit ="\\^";
+	    try {
+	      //parsing a CSV file into BufferedReader class constructor  
+	      BufferedReader br = new BufferedReader(new FileReader(fullPath));
+	      while ((line = br.readLine()) != null)
+	      {
+	    	  //System.out.println("Line = "+line);
+	    	  if (line.contains("^")) {
+	    		  String[] token = line.split(splitBy);
+	    		  //System.out.println("Last token = "+ token[token.length-1]);
+	    		  for (int i=0;i<token.length;i++) {
+	    			  if(token[i].contains(":b") || token[i].contains(":d>")) {
+	    				  String[] smalltoken = token[i].split(secondsplit);
+	    				  String key = smalltoken[smalltoken.length-1];
+	    				  //System.out.println("Last token =   "+ key);
+	    				  String ent = key+" (false)";
+	    				  if (entityList.containsKey(ent)==false) {
+	    					  entityList.put(ent,0);
+	    				  }
+	    				  ent = key+" (true)";
+	    				  if (entityList.containsKey(ent)==false) {
+	    					  entityList.put(ent,0);
+	    				  }		    				  
+	    			  }
+	    		  	}
+	    		 }
+	    	  }
 	    }
 	    catch(IOException e) {
 	      e.printStackTrace();
