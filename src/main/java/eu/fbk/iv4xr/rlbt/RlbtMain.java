@@ -54,7 +54,7 @@ public class RlbtMain{
 	static String lrConfigFile = currentDir+"/src/test/resources/configurations/buttons_doors_1.config";
 
 	// root folder for writing output
-	static String outputDir = currentDir + File.separator + "rlbt-files";// + File.separator + System.nanoTime();
+	static String outputDir = currentDir + File.separator + "rlbt-files"+ File.separator + System.nanoTime();
 	
 	// Configurations
 	static BurlapConfiguration burlapConfiguration = new BurlapConfiguration();
