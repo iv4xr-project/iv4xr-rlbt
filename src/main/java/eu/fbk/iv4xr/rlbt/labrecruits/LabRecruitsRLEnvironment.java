@@ -873,7 +873,7 @@ public class LabRecruitsRLEnvironment implements Environment {
 	public void GlobalCoveragePerEpisode() {
 		double globalcov=0;
 		if (GlobalEntityList.size()>0) {
-			globalcov = GlobalEntityList.size()/entityList.size();
+			globalcov = (double)GlobalEntityList.size()/entityList.size();
 		}
 		System.out.println("Global coverage till this episode = "+globalcov+"  (%) covered entity = "+ GlobalEntityList.size()+"   out of  "+entityList.size());
 		System.out.println("Entries that are not covered till this episode  ");
