@@ -54,7 +54,7 @@ public class RlbtMain{
 	static String lrConfigFile = currentDir+"/src/test/resources/configurations/buttons_doors_1.config";
 
 	// root folder for writing output
-	static String outputDir = currentDir + File.separator + "rlbt-files" + File.separator + System.nanoTime();
+	static String outputDir = currentDir + File.separator + "rlbt-files";// + File.separator + System.nanoTime();
 	
 	// Configurations
 	static BurlapConfiguration burlapConfiguration = new BurlapConfiguration();
@@ -99,9 +99,11 @@ public class RlbtMain{
 			episodeCoverage.add(episodecov);
 			episodeTime.add(estimatedTime);
 			
+			labRecruitsRlEnvironment.GlobalCoveragePerEpisode();
 			labRecruitsRlEnvironment.resetEnvironment();  /*reset environment*/
 		}
 		
+		labRecruitsRlEnvironment.CalculateGlobalCoverageAfterTraining();
 		/*------------Save------------------------*/
 		//long estimatedTime = System.currentTimeMillis() - startTime;
 		//System.out.println("Time - Training : "+estimatedTime);
@@ -114,6 +116,7 @@ public class RlbtMain{
 				
 		String episodesBaseName = outputDir + File.separator + "episode";
 		SerializationUtil.serializeEpisodes(episodes, episodesBaseName );
+		
 		labRecruitsRlEnvironment.stopAgentEnvironment();  /*stop RL agent environment*/
 		return episodes;
 	}
@@ -187,8 +190,11 @@ public class RlbtMain{
 			episodeCoverage.add(episodecov);
 			episodeTime.add(estimatedTime);
 			
+			labRecruitsRlEnvironment.GlobalCoveragePerEpisode();			
 			labRecruitsRlEnvironment.resetEnvironment();  /*reset environment*/
 		}
+		
+		labRecruitsRlEnvironment.CalculateGlobalCoverageAfterTraining();
 		/*------------Save------------------------*/
 		//long estimatedTime = System.currentTimeMillis() - startTime;
 		//System.out.println("Time - Training : "+estimatedTime);
@@ -459,14 +465,12 @@ public class RlbtMain{
 			}else {
 				System.err.println( "Fail to load parameter files. Quitting!");
 			}
+	        
 	        saveConfigurations();
 	    }
 	    catch( ParseException exp ) {
 	        System.err.println( "Parsing command line failed.  Reason: " + exp.getMessage() );
 	    }
-	    
-
-
 	}
 
 
