@@ -63,6 +63,8 @@ public class LabRecruitsRLEnvironment implements Environment {
 	//temporary variable to test connection coverage
 	public static boolean functionalCoverageFlag =false;
 	private static boolean AgentDeadFlag = false;
+	private double FullHealthScore =100;
+	private double HealthThreshold = 70;  
 	
 	public static boolean USE_GRAPHICS = false;     /*for running Labrecruit game with graphic*/
     
@@ -101,9 +103,11 @@ public class LabRecruitsRLEnvironment implements Environment {
 	private int STAGNATION_THRESHOLD = MAX_CYCLES;
 	
 	private int currentEpisode = 1;
-	private int healthpenalty;
+	//private int healthpenalty;
 	
-	private HashMap<String, Integer> entityList = null;
+	private HashMap<String, Integer> entityList = null;    // store entity coverage per episode
+	//private HashMap<String, Integer> GlobalEntityList = null;   // store entity coverage for all episodes
+	private ArrayList<String> GlobalEntityList = null;
 	
 	private double FuncCovReward=10;     // reward for exploring a new state of an entity
 	
@@ -131,8 +135,9 @@ public class LabRecruitsRLEnvironment implements Environment {
 		this.rewardFunction = getRewardFunction(searchMode, stateDistance);
 		this.STAGNATION_THRESHOLD = (int) lrConfiguration.getParameterValue("labrecruits.max_actions_since_last_new_state");
 		//this.healthScore =100;
-		this.healthpenalty=0;
+		//this.healthpenalty=0;
 		
+		GlobalEntityList = new ArrayList<String>();
 		//this.entityList = new HashMap<String, Integer>();
 		AgentDeadFlag = false;
 		functionalCoverageFlag = (Boolean) lrConfiguration.getParameterValue("labrecruits.functionalCoverage");  // temporary variable
@@ -170,7 +175,7 @@ public class LabRecruitsRLEnvironment implements Environment {
 	/*reset the state memory buffer*/
 	public void resetStateMemory() {
 		//this.healthScore=100;
-		this.healthpenalty=0;
+		//this.healthpenalty=0;
 		//this.entityList = new HashMap<String, Integer>();
 		this.rewardFunction.resetStateBuffer();	
 		/*for testing functional coverage*/
@@ -181,10 +186,15 @@ public class LabRecruitsRLEnvironment implements Environment {
 		}
 	}
 	private void printGoalEntities() {
-		System.out.println("Printing Goal Entity List - functional coverage testing");
+		System.out.println("Printing Goal Entity List - functional coverage testing, total entity = "+ entityList.size());
 		for (String k : entityList.keySet()) {
 			System.out.println("entity = "+k+"   visit Frequency= "+entityList.get(k));
-		}		
+		}	
+		/*System.out.println("----------------------Global entry list =  "+GlobalEntityList.size());
+		for(int i = 0; i < GlobalEntityList.size(); i++) {   
+		    System.out.println(GlobalEntityList.get(i));
+		}*/		
+		
 	}
 	
 	/*RefreshTestingGoal*/
@@ -237,10 +247,12 @@ public class LabRecruitsRLEnvironment implements Environment {
 	    				  String ent = key+" (false)";
 	    				  if (entityList.containsKey(ent)==false) {
 	    					  entityList.put(ent,0);
+	    					  //GlobalEntityList.put(ent,0);
 	    				  }
 	    				  ent = key+" (true)";
 	    				  if (entityList.containsKey(ent)==false) {
 	    					  entityList.put(ent,0);
+	    					  //GlobalEntityList.put(ent,0);
 	    				  }		    				  
 	    			  }
 	    		  	}
@@ -265,13 +277,16 @@ public class LabRecruitsRLEnvironment implements Environment {
 		/*for testing functional coverage*/
 		if(functionalCoverageFlag==true){
 			this.entityList = new HashMap<String, Integer>();
+			//this.GlobalEntityList = new HashMap<String, Integer>();
+			//GlobalEntityList = new ArrayList<String>();
 			LoadTestingGoal(labRecruitsLevel,labRecruitsLevelFolder);
+			//printGoalEntities();
 		}
 		
 		LabRecruitsConfig gameConfig = new LabRecruitsConfig(labRecruitsLevel,labRecruitsLevelFolder);
 		float viewDistance = 20;
 		gameConfig.replaceAgentViewDistance(viewDistance);
-		gameConfig.agent_speed = 0.5f;
+		gameConfig.agent_speed = 0.13f;
 		gameConfig.host = "localhost"; // "192.168.29.120";
 		labRecruitsAgentEnvironment = new LabRecruitsEnvironment(gameConfig);
 		labRecruitsAgentEnvironment.startSimulation();
@@ -434,14 +449,12 @@ public class LabRecruitsRLEnvironment implements Environment {
 	
 	@Override
 	public EnvironmentOutcome executeAction(Action a) {
-//		DPrint.ul("Inside Execute an action  ------- : ");
+		System.out.println("Inside function executeAction()");
 		State oldState = currentState; // state before execution
-		//DPrint.ul ("Old state: "+ oldState.toString());
-		
+		double currHealthpoint = testAgent.getState().worldmodel().health; // get current health point
 		LabRecruitsAction action = (LabRecruitsAction)a;  // this Action a should be mapped into a goal that the agent can execute
 		GoalStructure subGoal = getActionGoal(action.getActionId(), action.getInteractedEntity().type);
-//		DPrint.ul("Action selected : "+ action.getActionId()+ " interacted entity and type : "+action.getInteractedEntity()+"  "+action.getInteractedEntity().type);
-				
+
 		if (subGoal != null) {
 			doAction(subGoal);
 		} else {
@@ -451,19 +464,55 @@ public class LabRecruitsRLEnvironment implements Environment {
 //		updateCycles++;
 			
 		currentState = (LabRecruitsState) currentObservation();  //update current state	after executing the chosen action
-		//DPrint.ul ("Updated current state: "+ currentState.toString());
-		//System.out.println(entityList.size());
 		boolean terminated = isFinal(currentState);
-		//DPrint.ul("is this the final state:" + terminated);
-		lastReward = getReward(oldState, currentState, action);
+		
+		/*TODO:check this consideration- calculate reward if only the action is successful otherwise reward 0*/	
+		if (subGoal!=null) {
+			if (subGoal.getStatus().success()==true) {
+				lastReward = getReward(oldState, currentState, action);
+				System.out.println("Action ="+ action.actionName()+  "executed successfully, reward = "+lastReward);
+			}
+			else {
+				lastReward = 0;
+				System.out.println("Action ="+ action.actionName()+  "execution failure/inprogress, no reward = "+ lastReward);
 				
+			}
+		}
+		/*-------------For functional coverage calculation------------------------------------------*/
 		if(functionalCoverageFlag==true) {  // for functional coverage testing
 			double rewardfunccov=0;
-			rewardfunccov= UpdateGoalList(currentState); 
-			lastReward =lastReward+rewardfunccov;
+			rewardfunccov= UpdateGoalList(currentState);
+			/*if (rewardtype == RewardType.CuriousityDriven) {
+				System.out.println("Curiosity driven");
+				lastReward =lastReward+rewardfunccov;
+			}*/		
 		}
 		
-		/*big penalty if agent dies and end the episode*/
+		/*-----------------Penalty for curiosity RL: for moving around the same corner/place-----------------*/
+		/*if (rewardtype == RewardType.CuriousityDriven) {
+			List<Vec3> recentPositions = testAgent.getState().getRecentPositions();
+			if (recentPositions.size() >= 2) {//(recentPositions.size() >= 2) {
+				if (recentPositions.get(recentPositions.size()-1).equals(recentPositions.get(recentPositions.size()-2))) {
+					lastReward= lastReward-1;
+					//System.out.println("Action  = "+action.actionName()+"  agent moving around same position, penalty = "+reward);
+				} else {
+					lastReward = lastReward -0;
+					//System.out.println("Action  = "+action.actionName()+"  State visited over threshold,  penalty = "+reward);
+				}
+			}else {
+				// means did not move enough to have more recent positions
+				lastReward=lastReward-1;
+				//System.out.println("Action  = "+action.actionName()+" agent did not move enough to get more position,  penalty = "+reward);
+			}
+		}*/
+		/*------------------Penalize the agent for health loss and death- applicable to all kind of RL algorithm*/
+		//case 1: penalty for health loss. penalty value is the point that is lost for executing this action  
+		if(testAgent.getState().worldmodel().health<HealthThreshold) {  // penalty if only health point is below threshold
+			lastReward =  lastReward- (currHealthpoint - testAgent.getState().worldmodel().health);
+			DPrint.ul("Penalty for health loss = "+(currHealthpoint - testAgent.getState().worldmodel().health)+"  final reward ="+lastReward);
+		}
+		
+		//case 2: big penalty if agent dies and end the episode
 		if (testAgent.getState().worldmodel().health <= 0)
 		{
 			terminated = true;
@@ -472,11 +521,9 @@ public class LabRecruitsRLEnvironment implements Environment {
 			AgentDeadFlag= true;	
 			DPrint.ul("STOP SIMULAITON - AGENT DIED = "+testAgent.getState().worldmodel().health );
 		}
-		
-		//if(testAgent.getState().worldmodel().health<80) {
-		//	this.healthpenalty=this.healthpenalty+1;
-		//}
-		//DPrint.ul("get reward :" + lastReward);
+		/*----------------------------------------------------------------------------------------------------------*/
+		//DPrint.ul("Goal status :" + lastReward);
+		//DPrint.ul("Goal status :" + subGoal.getStatus().toString());
 		
 		EnvironmentOutcome outcome = new EnvironmentOutcome(oldState, action, currentState, lastReward, terminated);
 		
@@ -492,6 +539,11 @@ public class LabRecruitsRLEnvironment implements Environment {
 	}
 
 	
+	private double GetGeneralReward() {
+		// TODO Auto-generated method stub
+		return 0;
+	}
+
 	private double UpdateGoalList(LabRecruitsState currentState2) {	
 		double rewardfuncCov=0;
 		//System.out.println(currentState2.toString());
@@ -508,10 +560,18 @@ public class LabRecruitsRLEnvironment implements Environment {
 	    			 rewardfuncCov = FuncCovReward;
 	    		 }
 	    		 entityList.put(entitystr, freq);  // update frequency
+	    		 
+	    		 //update global entity list
+	    		 if (GlobalEntityList.contains(entitystr)==false) {
+	    			 GlobalEntityList.add(entitystr);
+	    		 }
+	    		 //int globfreq= GlobalEntityList.get(entitystr);
+	    		 //GlobalEntityList.put(entitystr, (globfreq+1));
 	    		 //System.out.println("ENTITY FOUND" + entitystr+"   freq ="+entityList.get(entitystr));
 	    	 }
 	         //System.out.println(entitystr);  
 	     }
+	     System.out.println("UPDATE- Global coverage list size  = "+ GlobalEntityList.size());
 	     return rewardfuncCov;	     
 	}
 
@@ -699,17 +759,10 @@ public class LabRecruitsRLEnvironment implements Environment {
 		} else {			
 			switch(rewardtype) {  //enable either sparse or curiosityDriven reward 
 			case Sparse:	
-				//System.out.println("Sparse mode , reward = " +0);
 				return 0;				
-				
-			
+		
 			case CuriousityDriven:
 				reward = rewardFunction.reward(state1, action, state2, testAgent.getState());
-				/*// adding penalty for health 
-				  if(testAgent.getState().worldmodel().health < 80) {
-					reward =reward-5*2;
-					this.healthpenalty =this.healthpenalty+1;
-				}*/
 				return reward;
 			
 			default:
@@ -793,5 +846,42 @@ public class LabRecruitsRLEnvironment implements Environment {
 			}
 		return coverageRatio;
 	}/*end of the function*/
+	
+	/*calculate coverage percentage for an episode*/
+	public void CalculateGlobalCoverageAfterTraining() {
+		double coverageRatio = 0;
+		System.out.println("End of training episodes - Calculate coverage ");
+		System.out.println("Global coverage list, total entity = "+ GlobalEntityList.size());
+		System.out.println("----------------------Global entry list - entries visited by agent during training -----------");
+		for(int i = 0; i < GlobalEntityList.size(); i++) {   
+		    System.out.println(GlobalEntityList.get(i));
+		}
+		/*if (functionalCoverageFlag==true) {
+			System.out.println("End of training episodes - Calculate coverage ");
+			System.out.println("Global coverage list, total entity = "+ GlobalEntityList.size());
+			for (String k : GlobalEntityList.keySet()) {
+				System.out.println("entity = "+k+"   visit Frequency= "+GlobalEntityList.get(k));
+			}		
+			double countzero = Collections.frequency(GlobalEntityList.values(), 0);
+			double coveragecount =  GlobalEntityList.size() - countzero;
+			coverageRatio = (coveragecount/(double)GlobalEntityList.size())*100;
+			System.out.println("Global Coverage at the end of training - Visited entity states " +coveragecount+" out of "+GlobalEntityList.size()+" entity states, Coverate percentage = "+ coverageRatio+"%");
+			}*/
+	}/*end of the function*/
+	
+	/*globar coverage after each episode*/
+	public void GlobalCoveragePerEpisode() {
+		double globalcov=0;
+		if (GlobalEntityList.size()>0) {
+			globalcov = (double)GlobalEntityList.size()/entityList.size();
+		}
+		System.out.println("Global coverage till this episode = "+globalcov+"  (%) covered entity = "+ GlobalEntityList.size()+"   out of  "+entityList.size());
+		System.out.println("Entries that are not covered till this episode  ");
+		for (String k : entityList.keySet()) {
+			if (GlobalEntityList.contains(k)==false) {
+				System.out.println("Entity =  "+k);
+				}
+			}
+		}/*End of function*/
 	
 }

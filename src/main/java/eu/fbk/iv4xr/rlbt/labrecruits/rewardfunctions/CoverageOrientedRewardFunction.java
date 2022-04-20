@@ -23,10 +23,11 @@ public class CoverageOrientedRewardFunction extends AbstractRlbtRewardFunction {
 
 	//store visited states from environment in an episode
 	HashMap<String, Integer> visitedStates = null;//new HashMap<String, Integer>();
-	int stateOccuranceThreshold =4;
+	int stateOccuranceThreshold =6;
 	int actionsSinceLastNewState = 0;
-	int HealthScoreThreshold =70;  // considering highest health score as 100
-	int FullHealthScore=100;
+	//int HealthScoreThreshold =70;  // considering highest health score as 100
+	//int FullHealthScore=100;
+	double weight =10;
 	
 	public CoverageOrientedRewardFunction(StateDistance stateDistanceFunction) {
 		super(stateDistanceFunction);
@@ -55,18 +56,18 @@ public class CoverageOrientedRewardFunction extends AbstractRlbtRewardFunction {
 			stateOccurance =  getNumofStateOccurance(currentState.toString());
 			// give reward for exploring a new quite different state
 			if (dissimilarity >=0.2 && stateOccurance<=stateOccuranceThreshold) {
-				reward = reward+ (dissimilarity*10);
+				reward = reward+ (dissimilarity*weight + PENALTY);
 				//System.out.println("Action  = "+action.actionName()+" Dissimilarity and fewer State Occurance, reward = "+reward);
 			}
 			//give penalty for exploring same state 
 			if (stateOccurance>stateOccuranceThreshold)
 			{
-				reward = reward - (dissimilarity*10 + PENALTY);
+				reward = reward - (dissimilarity*weight + PENALTY);
 				//System.out.println("Action  = "+action.actionName()+"  State visited over threshold,  penalty = "+reward);
 			}
 			//System.out.println("dissimilarity = "+dissimilarity+"  statevisited = "+stateOccurance);
 			// second -  consider agent's movement - reward movement, penalize staying at the same position
-			List<Vec3> recentPositions = agentBeliefState.getRecentPositions();
+			/*List<Vec3> recentPositions = agentBeliefState.getRecentPositions();
 			if (recentPositions.size() >= 2) {//(recentPositions.size() >= 2) {
 				if (recentPositions.get(recentPositions.size()-1).equals(recentPositions.get(recentPositions.size()-2))) {
 					//reward = -1;
@@ -82,11 +83,11 @@ public class CoverageOrientedRewardFunction extends AbstractRlbtRewardFunction {
 				reward=reward-1;
 				//System.out.println("Action  = "+action.actionName()+" agent did not move enough to get more position,  penalty = "+reward);
 				//reward = -1;
-			}
+			}*/
 			//third - penalize for reducing health status
-			double healthloss =  (double)(FullHealthScore - agentBeliefState.worldmodel().health);
+			//double healthloss =  (double)(FullHealthScore - agentBeliefState.worldmodel().health);
 			//giving penalty for any health loss
-			reward =  reward - healthloss;   // penalty as the absolute value of health loss
+			//reward =  reward - healthloss;   // penalty as the absolute value of health loss
 		}
 		return reward;
 	}
