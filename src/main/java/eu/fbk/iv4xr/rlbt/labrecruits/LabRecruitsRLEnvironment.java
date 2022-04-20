@@ -770,7 +770,7 @@ public class LabRecruitsRLEnvironment implements Environment {
 			double countzero = Collections.frequency(entityList.values(), 0);
 			double coveragecount =  entityList.size() - countzero;
 			double coverageRatio = (coveragecount/(double)entityList.size())*100;
-			System.out.println("Not all states are visited, Visited entity states " +coveragecount+" out of "+entityList.size()+" entity states, Coverate percentage = "+ coverageRatio+"%");
+			System.out.println("Not all states are visited, Visited entity states " +coveragecount+" out of "+entityList.size()+" entity states, Coverage percentage = "+ coverageRatio+"%");
 			return false;
 			}
 		else {
@@ -789,7 +789,7 @@ public class LabRecruitsRLEnvironment implements Environment {
 			double countzero = Collections.frequency(entityList.values(), 0);
 			double coveragecount =  entityList.size() - countzero;
 			coverageRatio = (coveragecount/(double)entityList.size())*100;
-			System.out.println("Coverage calculation - Visited entity states " +coveragecount+" out of "+entityList.size()+" entity states, Coverate percentage = "+ coverageRatio+"%");
+			System.out.println("Coverage calculation - Visited entity states " +coveragecount+" out of "+entityList.size()+" entity states, Coverage percentage = "+ coverageRatio+"%");
 			}
 		return coverageRatio;
 	}/*end of the function*/
