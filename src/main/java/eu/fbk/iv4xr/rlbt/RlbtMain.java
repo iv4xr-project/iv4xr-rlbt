@@ -447,7 +447,8 @@ public class RlbtMain{
 	        // choose testing or training
 	        if (loadAndSetParameter) {
 	        	// create output folder
-	        	if ((new File (outputDir)).mkdirs()) {
+	        	File reportDir = new File (outputDir);
+	        	if (reportDir.exists() || reportDir.mkdirs()) {
 					if (line.hasOption("trainingMode")) {
 						main.executeTraining(line, options);
 					}else if (line.hasOption("testingMode")){
