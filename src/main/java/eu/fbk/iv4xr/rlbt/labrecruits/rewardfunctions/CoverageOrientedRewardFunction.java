@@ -23,7 +23,7 @@ public class CoverageOrientedRewardFunction extends AbstractRlbtRewardFunction {
 
 	//store visited states from environment in an episode
 	HashMap<String, Integer> visitedStates = null;//new HashMap<String, Integer>();
-	int stateOccuranceThreshold =6;
+	int stateOccuranceThreshold =4;
 	int actionsSinceLastNewState = 0;
 	//int HealthScoreThreshold =70;  // considering highest health score as 100
 	//int FullHealthScore=100;
