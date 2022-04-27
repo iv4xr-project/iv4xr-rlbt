@@ -659,7 +659,8 @@ public class QLearningRL extends MDPSolver implements QProvider, LearningAgent, 
 		}
 		//System.out.println("End of an episode");
 		//System.out.println("Epsilon value = "+ this.epsilongr);
-		this.epsilongr = this.epsilongr*decayedEpsilonstep;  // multiply with a value <1 to decay the epsilon value
+		if(this.epsilongr > 0.1)
+			this.epsilongr = this.epsilongr*decayedEpsilonstep;  // multiply with a value <1 to decay the epsilon value
 		System.out.println("Decay Epsilo Value : End of an episode = "+this.epsilongr);
 		//initialize learningpolicy with new reduced epsilon value in order to reduce exploration after each episode
 		this.learningPolicy= new EpsilonGreedy(this, this.epsilongr);
