@@ -69,12 +69,15 @@ public class RlbtMain{
 		int numEpisodes = (int)burlapConfiguration.getParameterValue("burlap.num_of_episodes");
 		
 		String rewardtp = (String)lrConfiguration.getParameterValue("labrecruits.rewardtype");
-		if (rewardtp.equalsIgnoreCase("CuriousityDriven")) {  // adjust decaying factor for curiosity driven
+		if (rewardtp.equalsIgnoreCase("CuriousityDriven")) {
 			double epsilonval = (double)burlapConfiguration.getParameterValue("burlap.qlearning.epsilonval");
 			double calculatedDecayVal = (double)(epsilonval/numEpisodes);
 			calculatedDecayVal=calculatedDecayVal/2;
 			burlapConfiguration.setParameterValue("burlap.qlearning.decayedepsilonstep", Double.toString(calculatedDecayVal));  // set calculated decayed value according to number of episodes
 			System.out.println("epsilon val ="+epsilonval+ "  decay = "+calculatedDecayVal);
+		}
+		if (rewardtp.equalsIgnoreCase("Sparse")) {
+			burlapConfiguration.setParameterValue("burlap.qlearning.decayedepsilonstep", Double.toString(0));			
 		}
 
 
