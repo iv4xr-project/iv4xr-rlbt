@@ -473,7 +473,7 @@ public class LabRecruitsRLEnvironment implements Environment {
 				System.out.println("Action ="+ action.actionName()+  "executed successfully, reward = "+lastReward);
 			}
 			else {
-				lastReward = 0;
+				lastReward = 0;  
 				System.out.println("Action ="+ action.actionName()+  "execution failure/inprogress, no reward = "+ lastReward);
 				
 			}
@@ -482,10 +482,11 @@ public class LabRecruitsRLEnvironment implements Environment {
 		if(functionalCoverageFlag==true) {  // for functional coverage testing
 			double rewardfunccov=0;
 			rewardfunccov= UpdateGoalList(currentState);
-			/*if (rewardtype == RewardType.CuriousityDriven) {
+			if (rewardtype == RewardType.CuriousityDriven) { // Curiosity RL: additional reward for observing a new state of an entity (of the coverage list) for the first time
+				//if ((subGoal!=null) &&subGoal.getStatus().success()==true) {
 				System.out.println("Curiosity driven");
-				lastReward =lastReward+rewardfunccov;
-			}*/		
+				lastReward =lastReward+rewardfunccov;//}
+			}		
 		}
 		
 		/*-----------------Penalty for curiosity RL: for moving around the same corner/place-----------------*/
@@ -557,7 +558,7 @@ public class LabRecruitsRLEnvironment implements Environment {
 	    		 int freq= entityList.get(entitystr);
 	    		 freq =freq+1;
 	    		 if(freq==1) {   // a new state of this entity is observed, the agent is obtained small reward. This will encourage him to explore new states of entities
-	    			 rewardfuncCov = FuncCovReward;
+	    			 rewardfuncCov += 1;//FuncCovReward; // 1 for observing a new state of an entity
 	    		 }
 	    		 entityList.put(entitystr, freq);  // update frequency
 	    		 
@@ -571,6 +572,8 @@ public class LabRecruitsRLEnvironment implements Environment {
 	    	 }
 	         //System.out.println(entitystr);  
 	     }
+	     if (rewardfuncCov>0)
+	    	 rewardfuncCov +=FuncCovReward;  // get the final reward
 	     System.out.println("UPDATE- Global coverage list size  = "+ GlobalEntityList.size());
 	     return rewardfuncCov;	     
 	}
@@ -798,7 +801,10 @@ public class LabRecruitsRLEnvironment implements Environment {
 			if(functionalCoverageFlag==true) {
 				System.out.println("Functional coverage testing");
 				if(entityList.size()>0 && HasAllGoalSatisfied()==true)
+				{
+					System.out.println("Reached Final state : all entity covered");
 					return true;
+				}
 				else
 					return false;
 			}
@@ -823,7 +829,7 @@ public class LabRecruitsRLEnvironment implements Environment {
 			double countzero = Collections.frequency(entityList.values(), 0);
 			double coveragecount =  entityList.size() - countzero;
 			double coverageRatio = (coveragecount/(double)entityList.size())*100;
-			System.out.println("Not all states are visited, Visited entity states " +coveragecount+" out of "+entityList.size()+" entity states, Coverage percentage = "+ coverageRatio+"%");
+			System.out.println("Not all states are visited, Visited entity states " +coveragecount+" out of "+entityList.size()+" entity states, Coverate percentage = "+ coverageRatio+"%");
 			return false;
 			}
 		else {
@@ -842,7 +848,7 @@ public class LabRecruitsRLEnvironment implements Environment {
 			double countzero = Collections.frequency(entityList.values(), 0);
 			double coveragecount =  entityList.size() - countzero;
 			coverageRatio = (coveragecount/(double)entityList.size())*100;
-			System.out.println("Coverage calculation - Visited entity states " +coveragecount+" out of "+entityList.size()+" entity states, Coverage percentage = "+ coverageRatio+"%");
+			System.out.println("Coverage calculation - Visited entity states " +coveragecount+" out of "+entityList.size()+" entity states, Coverate percentage = "+ coverageRatio+"%");
 			}
 		return coverageRatio;
 	}/*end of the function*/
@@ -873,7 +879,7 @@ public class LabRecruitsRLEnvironment implements Environment {
 	public void GlobalCoveragePerEpisode() {
 		double globalcov=0;
 		if (GlobalEntityList.size()>0) {
-			globalcov = (double)GlobalEntityList.size()/entityList.size();
+			globalcov = ((double)GlobalEntityList.size()/entityList.size())*100;
 		}
 		System.out.println("Global coverage till this episode = "+globalcov+"  (%) covered entity = "+ GlobalEntityList.size()+"   out of  "+entityList.size());
 		System.out.println("Entries that are not covered till this episode  ");
