@@ -56,8 +56,8 @@ public class CoverageOrientedRewardFunction extends AbstractRlbtRewardFunction {
 			stateOccurance =  getNumofStateOccurance(currentState.toString());
 			// give reward for exploring a new quite different state
 			if (dissimilarity >=0.2 && stateOccurance<=stateOccuranceThreshold) {
-				reward = reward+ (dissimilarity*weight + PENALTY);
-				//System.out.println("Action  = "+action.actionName()+" Dissimilarity and fewer State Occurance, reward = "+reward);
+				System.out.println("Curiosity reward Test : without reward for visiting new state - combination of entities");
+				//reward = reward+ (dissimilarity*weight + PENALTY);
 			}
 			//give penalty for exploring same state 
 			if (stateOccurance>stateOccuranceThreshold)
