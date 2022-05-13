@@ -68,6 +68,9 @@ public class LabRecruitsRLEnvironment implements Environment {
 	
 	public static boolean USE_GRAPHICS = false;     /*for running Labrecruit game with graphic*/
     
+	public int tickbudgetForExplore = 25;
+	public int memorywipeinterval =4;
+	
 	private LabRecruitsEnvironment labRecruitsAgentEnvironment = null; 
 	private static LabRecruitsTestServer labRecruitsTestServer = null;
 	LabRecruitsTestAgent testAgent = null;
@@ -109,7 +112,7 @@ public class LabRecruitsRLEnvironment implements Environment {
 	//private HashMap<String, Integer> GlobalEntityList = null;   // store entity coverage for all episodes
 	private ArrayList<String> GlobalEntityList = null;
 	
-	private double FuncCovReward=10;     // reward for exploring a new state of an entity
+	private double FuncCovReward=5;     // reward for exploring a new state of an entity
 	
 	
 	public LabRecruitsRLEnvironment(LRConfiguration lrConfiguration, StateDistance stateDistance) {
@@ -303,10 +306,11 @@ public class LabRecruitsRLEnvironment implements Environment {
 		//GoalStructure goal = getActionGoal("button1", LabEntity.SWITCH); //observe(); //getActionGoal("door1", LabEntity.DOOR); // getTestGoal ();
 		GoalStructure goal =  explore(); //getActionGoal(goalEntity, goalEntityType);
 		DPrint.ul("Starting Simulation : \n  Goal : "+goalEntity +"    "+goal.toString() +"   Entity type : "+goalEntityType+"  status : "+goal.getStatus());
-		doAction(goal);
+		doAction(goal, maxTicksPerAction);
 
 		DPrint.ul ("========Getting current State from start agent Environment==================");
 		currentState = (LabRecruitsState) currentObservation();
+		double rewardval= UpdateGoalList(currentState);   // update coverage goal for the first time
 		DPrint.ul ("Initial State (Agent's view): "+ currentState.toString());
 	}
 	
@@ -339,7 +343,7 @@ public class LabRecruitsRLEnvironment implements Environment {
 			goal = GoalLib.entityInteracted(entityId);
 			
 			//FIXME handle better, this is temporary!
-			clearAgentMemory();
+			//clearAgentMemory();
 			
 			//testAgent.getState().getMemorizedPath().clear();
 		} else if(entityType.contentEquals(LabEntity.DOOR)) {
@@ -365,8 +369,10 @@ public class LabRecruitsRLEnvironment implements Environment {
 	 * Clear the agent's memory before exploration. This forces the agent to 'refresh' its belief state after an action.
 	 */
 	private void clearAgentMemory () {
-		var surfaceNavGraph = testAgent.getState().pathfinder();
-		surfaceNavGraph.wipeOutMemory();
+		//System.out.println("Clearing agent's memeory of old observations");
+		testAgent.getState().knownEntities().clear(); // clearing the agent's memory
+		//var surfaceNavGraph = testAgent.getState().pathfinder();
+		//surfaceNavGraph.wipeOutMemory();
 	}
 	
 	
@@ -402,7 +408,7 @@ public class LabRecruitsRLEnvironment implements Environment {
 		// first force the agent to explore the surrounding for changes and refresh its belief (state)
 		DPrint.ul("-------START EXPLORATION  - after an action to update agent's view---------------------------------");
 		GoalStructure goal = explore();
-		doAction(goal);
+		doAction(goal, maxTicksPerAction);
 		DPrint.ul("-------END EXPLORATION ---------------------------------");
 		
 		LabRecruitsState currentState = new LabRecruitsState(false);
@@ -428,8 +434,8 @@ public class LabRecruitsRLEnvironment implements Environment {
 		for (WorldEntity worldEntity : beliefState.knownEntities()){
 			worldEntity.timestamp=0;
 			//System.out.println("Entity type on current observation = "+ worldEntity.type);
-			if (worldEntity.type.contentEquals(LabEntity.SWITCH)
-					|| worldEntity.type.contentEquals(LabEntity.DOOR)) // != "FireHazard")
+			if (worldEntity.type.contentEquals(LabEntity.SWITCH) || worldEntity.type.contentEquals(LabEntity.DOOR)) 
+			//if (worldEntity.type.contentEquals(LabEntity.SWITCH))
 			{	
 				currentState.addObject(new LabRecruitsEntityObject(worldEntity));
 			}
@@ -449,44 +455,71 @@ public class LabRecruitsRLEnvironment implements Environment {
 	
 	@Override
 	public EnvironmentOutcome executeAction(Action a) {
-		System.out.println("Inside function executeAction()");
+		
+		System.out.println("Inside function executeAction()- action type : "+ a.toString());
 		State oldState = currentState; // state before execution
 		double currHealthpoint = testAgent.getState().worldmodel().health; // get current health point
 		LabRecruitsAction action = (LabRecruitsAction)a;  // this Action a should be mapped into a goal that the agent can execute
 		GoalStructure subGoal = getActionGoal(action.getActionId(), action.getInteractedEntity().type);
-
+		//System.out.println("Action type : ="+action.getInteractedEntity().type);
 		if (subGoal != null) {
-			doAction(subGoal);
+			doAction(subGoal, maxTicksPerAction);
 		} else {
 			// TODO this means the agent cannot do anything, so let the current goal continue?
 		}
 
-//		updateCycles++;
-			
 		currentState = (LabRecruitsState) currentObservation();  //update current state	after executing the chosen action
+//		updateCycles++;
+		// clearing agents memeory after nth interval before making an observation
+		if((updateCycles % memorywipeinterval)==0) 
+		{
+			//LabRecruitsState tempstate = currentState;
+			System.out.println("Update cycle= "+updateCycles+  " Clearing agent's memeory");
+			clearAgentMemory();
+			LabRecruitsState tempstate = (LabRecruitsState) currentObservation();  //update current state	after executing the chosen action
+			if(tempstate.numObjects()==0) {
+				System.out.println("After wiping memory, new observation contains 0 entry.");
+				//currentState = tempstate;
+				System.out.println("Go on with the last observed state = "+currentState);
+			}
+			else {
+				currentState = tempstate;
+				System.out.println("After clearing memory, new observation = "+ currentState);
+			}
+		}
+			
+		//currentState = (LabRecruitsState) currentObservation();  //update current state	after executing the chosen action
 		boolean terminated = isFinal(currentState);
 		
 		/*TODO:check this consideration- calculate reward if only the action is successful otherwise reward 0*/	
-		if (subGoal!=null) {
-			if (subGoal.getStatus().success()==true) {
-				lastReward = getReward(oldState, currentState, action);
-				System.out.println("Action ="+ action.actionName()+  "executed successfully, reward = "+lastReward);
+		if (action.getInteractedEntity().type==LabEntity.SWITCH) {
+			System.out.println("Action type = Switch. Reward calculation only for interacting with a switch");		
+			if (subGoal!=null) {
+				if (subGoal.getStatus().success()==true) {
+					lastReward = getReward(oldState, currentState, action);
+					System.out.println("Action ="+ action.actionName()+  "executed successfully, reward = "+lastReward);
+				}
+				else {
+					lastReward = 0;  
+					System.out.println("Action ="+ action.actionName()+  "execution failure/inprogress, no reward = "+ lastReward);
+					}
+				}
 			}
-			else {
-				lastReward = 0;  
-				System.out.println("Action ="+ action.actionName()+  "execution failure/inprogress, no reward = "+ lastReward);
-				
-			}
+		else {
+			System.out.println("Action type Door .Only to check the status of the door.  Reward = 0");
+			lastReward=0;  // for entity type door we don't give any reward
 		}
 		/*-------------For functional coverage calculation------------------------------------------*/
 		if(functionalCoverageFlag==true) {  // for functional coverage testing
 			double rewardfunccov=0;
 			rewardfunccov= UpdateGoalList(currentState);
-			if (rewardtype == RewardType.CuriousityDriven) { // Curiosity RL: additional reward for observing a new state of an entity (of the coverage list) for the first time
-				//if ((subGoal!=null) &&subGoal.getStatus().success()==true) {
-				System.out.println("Curiosity driven");
-				lastReward =lastReward+rewardfunccov;//}
-			}		
+			if (action.getInteractedEntity().type==LabEntity.SWITCH) {
+				if (rewardtype == RewardType.CuriousityDriven) { // Curiosity RL: additional reward for observing a new state of an entity (of the coverage list) for the first time
+					if ((subGoal!=null) &&subGoal.getStatus().success()==true) {				
+					lastReward =lastReward+rewardfunccov;
+					System.out.println("Curiosity driven- reward for observing new state of entities : "+ lastReward);}
+				}		
+			}
 		}
 		
 		/*-----------------Penalty for curiosity RL: for moving around the same corner/place-----------------*/
@@ -533,9 +566,10 @@ public class LabRecruitsRLEnvironment implements Environment {
 				" Goal status: " + (subGoal != null?subGoal.getStatus().toString():" NULL"));
 		//DPrint.ul("Health penalty = "+this.healthpenalty);
 		
-		// each action consumes budget
-		updateCycles++;
 		
+		// each action consumes budget
+		updateCycles++;		
+				
 		return outcome;
 	}
 
@@ -558,6 +592,7 @@ public class LabRecruitsRLEnvironment implements Environment {
 	    		 int freq= entityList.get(entitystr);
 	    		 freq =freq+1;
 	    		 if(freq==1) {   // a new state of this entity is observed, the agent is obtained small reward. This will encourage him to explore new states of entities
+	    			 System.out.println("In UpdateGoalList - getting small reward for observing a new entity state: "+ entitystr);
 	    			 rewardfuncCov += 1;//FuncCovReward; // 1 for observing a new state of an entity
 	    		 }
 	    		 entityList.put(entitystr, freq);  // update frequency
@@ -610,7 +645,7 @@ public class LabRecruitsRLEnvironment implements Environment {
 		//GoalStructure goal = getActionGoal("door3", LabEntity.DOOR);
 		GoalStructure goal = getActionGoal(goalEntity, goalEntityType); //observe(); //getActionGoal("door1", LabEntity.DOOR); // getTestGoal ();
 		DPrint.ul("Testing Goal : "+goal.toString() +"  status : "+goal.getStatus());
-		doAction(goal);
+		doAction(goal, maxTicksPerAction);
 
 		currentState = (LabRecruitsState) currentObservation();
 		DPrint.ul ("TESTING : Initial State (Agent's view): "+ currentState.toString());
@@ -686,9 +721,10 @@ public class LabRecruitsRLEnvironment implements Environment {
 	 * and sleep time could be necessary.
 	 * @param goal
 	 */
-	private void doAction (GoalStructure goal) {
+	private void doAction (GoalStructure goal, int tickbugdet) {
+		System.out.println("In doAction :  tickbudget : "+ tickbugdet);
 		testAgent.setGoal(goal);
-		int maxTicks = maxTicksPerAction;	// let the agent run until the current goal is either succeeds or fails?!
+		int maxTicks =tickbugdet;// maxTicksPerAction;	// let the agent run until the current goal is either succeeds or fails?!
 		int tickCounter = 0;
 		while (tickCounter < maxTicks && goal.getStatus().inProgress()) {
 			try {
