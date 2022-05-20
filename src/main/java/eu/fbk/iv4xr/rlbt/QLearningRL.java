@@ -27,13 +27,17 @@ import burlap.mdp.singleagent.environment.SimulatedEnvironment;
 import burlap.mdp.singleagent.model.RewardFunction;
 import burlap.statehashing.HashableState;
 import burlap.statehashing.HashableStateFactory;
+import eu.fbk.iv4xr.rlbt.labrecruits.LabRecruitsState;
+import eu.fbk.iv4xr.rlbt.labrecruits.distance.JaccardDistance;
 import eu.fbk.iv4xr.rlbt.utils.SerializationUtil;
 import eu.fbk.iv4xr.rlbt.utils.Utils;
+import eu.fbk.iv4xr.rlbt.distance.StateDistance;
 
 import org.yaml.snakeyaml.Yaml;
 
 import javax.management.RuntimeErrorException;
 import java.io.*;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
@@ -243,6 +247,7 @@ public class QLearningRL extends MDPSolver implements QProvider, LearningAgent, 
 	protected int													totalNumberOfSteps = 0;
 	
 	protected Random 					rand;
+	private StateDistance stDistFunction;
 	
 	/**
 	 * Initializes Q-learning with 0.1 epsilon greedy policy, the same Q-value initialization everywhere, and places no limit on the number of steps the 
@@ -366,6 +371,8 @@ public class QLearningRL extends MDPSolver implements QProvider, LearningAgent, 
 		numEpisodesForPlanning = 1;
 		maxQChangeForPlanningTermination = 0.;
 		rand = RandomFactory.getMapped(0);
+		
+		this.stDistFunction = new JaccardDistance(); 
 		
 }
 	/**
@@ -508,7 +515,8 @@ public class QLearningRL extends MDPSolver implements QProvider, LearningAgent, 
 		//System.out.println("Inside QLearningStateNode() -  Q function size: "+qFunction.size());
 		QLearningStateNode node = qFunction.get(s);
 		
-		if(node == null){
+		if(node == null)
+		{ 
 			node = new QLearningStateNode(s);
 			List<Action> gas = this.applicableActions(s.s());
 			if(gas.isEmpty()){
@@ -517,19 +525,86 @@ public class QLearningRL extends MDPSolver implements QProvider, LearningAgent, 
 			}
 			for(Action ga : gas){
 				node.addQValue(ga, qInitFunction.qValue(s.s(), ga));
-			}
-			
+			}				
 			qFunction.put(s, node);
-			//System.out.println("Qlearning -  state not found. Making new entry, Q function size : " +  qFunction.size());
-			
+			System.out.println("Qlearning -  state not found. Making new entry, Q function size : " +  qFunction.size());			
 		}
-		else {
-			//System.out.println("Qlearning -  State exists. Q table size = "+  qFunction.size());
-		}
-		return node;
-		
+		return node;		
 	}
 	
+	
+	protected QLearningStateNode getStateNodeSimilarState(HashableState s){
+		System.out.println("Inside getStateNode() - for state: "+s.s().toString());
+		QLearningStateNode node = qFunction.get(s);
+		
+		if(node == null){  // if no previous entry found
+			QLearningStateNode similarnode = GetSimilarEntry(s); // get similar node 
+			
+			if (similarnode == null) //if no similar entry is found in q-table, make a new entry
+			{
+				node = new QLearningStateNode(s);
+				List<Action> gas = this.applicableActions(s.s());
+				if(gas.isEmpty()){
+					gas = this.applicableActions(s.s());
+					throw new RuntimeErrorException(new Error("No possible actions in this state, cannot continue Q-learning"));
+				}
+				for(Action ga : gas){
+					node.addQValue(ga, qInitFunction.qValue(s.s(), ga));
+				}				
+				qFunction.put(s, node);
+				System.out.println("Qlearning -  state not found. Making new entry, Q function size : " +  qFunction.size());				
+			}
+			else 
+			{
+				System.out.println("Similar state entry found, cur state = "+s.s().toString()+"  similar state = "+similarnode.s.s().toString());
+				System.out.println("cur state = "+s.s().toString());
+				System.out.println("similar state = "+similarnode.s.s().toString());
+				return similarnode;  // similar entry found
+			}
+		}
+		return node;		
+	}
+	
+	private QLearningStateNode GetSimilarEntry(HashableState s) {
+		System.out.println("IN GetSimilarEntry(), compare = "+s.s().toString());
+		if (qFunction.size()>0) {
+			for (HashableState key: qFunction.keySet()) {
+				QLearningStateNode node = qFunction.get(key);
+				boolean flagsubs =  stDistFunction.subsume(s.s(), node.s.s());  // check if s is subsumed in node
+				if (flagsubs==true) {
+					System.out.println("YES SUBSUMES.s= "+s.s().toString()+"  node = "+node.s.s().toString());
+					return node;
+				}
+				else
+				{
+					System.out.println("NOT subsume.s= "+s.s().toString()+"  node = "+node.s.s().toString());
+				}
+			}
+		}
+		return null;
+	}
+	
+	private QLearningStateNode GetSimilarStateEntryinQtable(HashableState s) {
+		System.out.println("IN GetSimilarEntry(), compare = "+s.s().toString());
+		QLearningStateNode nodeentry = qFunction.get(s);		
+		if (qFunction.size()>0 && nodeentry==null) {
+			for (HashableState key: qFunction.keySet()) {
+				QLearningStateNode node = qFunction.get(key);
+				boolean flagsubs =  stDistFunction.subsume(s.s(), node.s.s());  // check if s is subsumed in node
+				if (flagsubs==true) {
+					System.out.println("YES SUBSUMES.s= "+s.s().toString()+"  node = "+node.s.s().toString());
+					return node;
+				}
+				else
+				{
+					System.out.println("NOT subsume.s= "+s.s().toString()+"  node = "+node.s.s().toString());
+				}
+			}
+		}
+		return null;
+	}
+
+
 	/**
 	 * Returns the maximum Q-value in the hashed stated.
 	 * @param s the state for which to get he maximum Q-value;
@@ -590,23 +665,43 @@ public class QLearningRL extends MDPSolver implements QProvider, LearningAgent, 
 	}
 
 	
-	
+   
 	@Override
 	public Episode runLearningEpisode(Environment env, int maxSteps) {	
-		//System.out.println("Starting runLearningEpisode()");
+		System.out.println("Starting runLearningEpisode()");
 		State initialState = env.currentObservation();		
 		Episode ea = new Episode(initialState);
 		HashableState curState = this.stateHash(initialState);
 //		System.out.println("Hashed state = " +curState);
-		//System.out.println("In runLearningEpisode() - Starting while() loop");
+		System.out.println("In runLearningEpisode() - Starting while() loop");
 		
 		eStepCounter = 0;
 
 		maxQChangeInLastEpisode = 0.;
+		//while(!env.isInTerminalState() && (eStepCounter < maxSteps || maxSteps == -1)){
 		while(!env.isInTerminalState() && (eStepCounter < maxSteps || maxSteps == -1)){
+			QLearningStateNode similarnode=null;
+			if (qFunction.size()>0)
+			{
+				System.out.println("In runLearningEpisode() - check for similar state entry in q table");
+				similarnode = GetSimilarStateEntryinQtable(curState);
+			
+				if (similarnode!=null)
+				{
+					System.out.println("Similar state entry found in qtable");
+					System.out.println("Current state = "+ curState.s().toString());
+					System.out.println("Similar state ="+ similarnode.s.s().toString());
+					curState = similarnode.s;
+				}
+				else {
+					System.out.println("No similar state found ");
+				}
+			}
+			System.out.println("Latest state = "+ curState.s().toString());
+			System.out.println("In runLearningEpisode() - before selection of action");
 			Action action = learningPolicy.action(curState.s());
+			System.out.println("Inside runLearningEpisode(), selected action for this pass : "+action.actionName());
 			printQtable(curState);
-			//System.out.println("Inside runLearningEpisode(), selected action for this pass : "+action.actionName());
 			//System.out.println("Get Q value");
 			QValue curQ = this.getQ(curState, action);
 			
@@ -619,7 +714,7 @@ public class QLearningRL extends MDPSolver implements QProvider, LearningAgent, 
 			}
 			//System.out.println("Action executed, returned in runLearningEpisode()- look for max q ");
 			HashableState nextState = this.stateHash(eo.op);
-			//System.out.println("In runlearningepisode() ,hashed current state = "+curState.toString()+"  \n  next state = "+nextState.toString());
+			System.out.println("In runlearningepisode() , next state = "+eo.op.toString());
 			double maxQ = 0.;
 
 //			System.out.println("hash state availabe in q table =  "+checkhashentry(nextState)); 
@@ -653,12 +748,24 @@ public class QLearningRL extends MDPSolver implements QProvider, LearningAgent, 
 				maxQChangeInLastEpisode = deltaQ;
 			}
 
-			//move on polling environment for its current state in case it changed during processing
+		    //move on polling environment for its current state in case it changed during processing
+			/*LabRecruitsState newstate = (LabRecruitsState) env.currentObservation();
+			if (newstate.numObjects()==0) {
+				System.out.println("In Q learning -  nex observation is empty, restoring to prev obs = "+ eo.op.toString());
+				curState = this.stateHash(eo.op);
+			}
+			else {
+				System.out.println("In Q learning -  new observation = "+newstate.toString());
+				curState = this.stateHash(newstate);
+			}*/
+			System.out.println("q learning - make new observation");
 			curState = this.stateHash(env.currentObservation());
 			this.totalNumberOfSteps++;
 		}
-		//System.out.println("End of an episode");
-		//System.out.println("Epsilon value = "+ this.epsilongr);
+		System.out.println("Action seq "+ea.actionSequence.size()+"  ="+ea.actionSequence);
+		System.out.println("Reward seq "+ea.rewardSequence.size()+"  ="+ea.rewardSequence);
+		System.out.println("Decayedepsilon val = "+decayedEpsilonstep);
+		System.out.println("Epsilon value = "+ this.epsilongr);
 		if(this.epsilongr > 0.1)
 			this.epsilongr = this.epsilongr-decayedEpsilonstep;
 			//this.epsilongr = this.epsilongr*decayedEpsilonstep;  // multiply with a value <1 to decay the epsilon value
@@ -666,9 +773,9 @@ public class QLearningRL extends MDPSolver implements QProvider, LearningAgent, 
 		//initialize learningpolicy with new reduced epsilon value in order to reduce exploration after each episode
 		this.learningPolicy= new EpsilonGreedy(this, this.epsilongr);
 		//System.out.println("Total number of steps require in this episode : "+this.totalNumberOfSteps+ "   estepcount =  "+ this.eStepCounter);
-		System.out.println("Number of action tried : "+ ea.actionSequence.size()+ "Numvber of reward = "+ea.rewardSequence.size());
-		System.out.println("Action seq"+ ea.actionSequence);
-		System.out.println("reward seq = "+ ea.rewardSequence);
+		//System.out.println("Number of action tried : "+ ea.actionSequence.size()+ "Numvber of reward = "+ea.rewardSequence.size());
+		//System.out.println("Action seq"+ ea.actionSequence);
+		//System.out.println("reward seq = "+ ea.rewardSequence);
 		return ea;
 	}
 	
@@ -712,7 +819,16 @@ public class QLearningRL extends MDPSolver implements QProvider, LearningAgent, 
 			}
 			
 		    //move on polling environment for its current state in case it changed during processing
-			curState = this.stateHash(env.currentObservation());
+			LabRecruitsState newstate = (LabRecruitsState) env.currentObservation();
+			if (newstate.numObjects()==0) {
+				System.out.println("IN qlearning - nex observation is empty, restoring to prev obs = "+ eo.op.toString());
+				curState = this.stateHash(eo.op);
+			}
+			else {
+				System.out.println("In Q learning -  new observation = "+newstate.toString());
+				curState = this.stateHash(newstate);
+			}
+			//curState = this.stateHash(env.currentObservation());
 			this.totalNumberOfSteps++;
 		}
 		System.out.println("Epsilon value = "+ this.epsilongr);
@@ -738,7 +854,19 @@ public class QLearningRL extends MDPSolver implements QProvider, LearningAgent, 
 	}  // end of the function
 
 	
-	private void printQtable(HashableState curState) {
+	/*print final q-table*/
+	public void printQtablesize(PrintStream printStream) {
+		printStream.println("Qtable size = "+this.qFunction.keySet().size());		
+	}  // end of the function
+
+	
+	private void printQtable(HashableState curState) {		
+		if (qFunction.containsKey(curState)){
+			System.out.println("qlearning state- This state already exists in Qtable : "+curState);
+			}
+		else
+			System.out.println("qlearning state- State NOT found in q table"+curState);
+
 		QLearningStateNode value = qFunction.get(curState);
 		List<QValue> qEntry = value.qEntry;
 		for (QValue qvalue : qEntry) {
