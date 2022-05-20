@@ -58,6 +58,56 @@ public class JaccardDistance implements StateDistance {
 		return similaritymeasure;
 	}
 	
+	@Override
+	public boolean subsume(State s1, State s2) {  // if state s1 is subsumed in state s2
+		boolean flagsubsume=false;
+		double totalFeatureS1=0;
+		double numcommonFeature =0;
+		
+		LabRecruitsState labRecruitsState1 = (LabRecruitsState)s1;
+		LabRecruitsState labRecruitsState2 = (LabRecruitsState)s2;
+		//System.out.println("in subsume()-s1 = "+ labRecruitsState1.toString());
+		//System.out.println("in subsume()-s2 = "+ labRecruitsState2.toString());
+		//totalFeatureS1 = labRecruitsState1.getObjectsMap().keySet().size();//+ labRecruitsState2.getObjectsMap().keySet().size();
+		for (String k : labRecruitsState1.getObjectsMap().keySet()) 
+		{
+			LabRecruitsEntityObject entity1 = (LabRecruitsEntityObject) labRecruitsState1.getObjectsMap().get(k);
+			if (entity1.getLabRecruitsEntity().type =="Switch") 
+				totalFeatureS1 = totalFeatureS1+1;
+			
+			if (labRecruitsState2.getObjectsMap().containsKey(k)) 
+			{				
+				LabRecruitsEntityObject entity2 = (LabRecruitsEntityObject) labRecruitsState2.getObjectsMap().get(k);
+				//System.out.println("in subsume()-entity id= "+entity1.getLabRecruitsEntity().id+"   type="+entity1.getLabRecruitsEntity().type);
+				if (entity1.getLabRecruitsEntity().type =="Switch") 
+				{
+					//System.out.println("inside loop-entity is switch= "+entity1.getLabRecruitsEntity().type);
+					String entitybooleanproperty = getbooleanpropertystring(entity1.getLabRecruitsEntity().type);
+					if (entity1.getLabRecruitsEntity().getBooleanProperty(entitybooleanproperty)== entity2.getLabRecruitsEntity().getBooleanProperty(entitybooleanproperty)) 
+					{
+						numcommonFeature++;
+					}
+				}
+			}			
+			//System.out.println(labRecruitsState1.getObjectsMap().get(k).name());
+		}
+		if(numcommonFeature>0 && totalFeatureS1>0) 
+		{
+			if(numcommonFeature == totalFeatureS1) {
+				flagsubsume = true;
+			}
+		}
+		//if(numcommonFeature==0)
+		//	System.out.println("subsume()- no common entities");
+		
+		//System.out.println("subsume() - total feature in sq = "+ totalFeatureS1+"  intersect = "+ numcommonFeature+"  subsumeFag = "+flagsubsume);
+		
+		return flagsubsume;
+	}
+	
+	
+	
+	
 	private String getbooleanpropertystring(String entitytype) {
 		String booleanpropertyname="";
 		if (entitytype=="Door")
