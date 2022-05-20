@@ -67,4 +67,11 @@ public class SorensenDiceIndex implements StateDistance {
 		return booleanpropertyname;		
 	}
 
+	@Override
+	public boolean subsume(State s1, State s2) {
+		// TODO Auto-generated method stub
+		return false;
+	}
+	
+
 }
