@@ -37,7 +37,7 @@ public class LabRecruitsActionType implements ActionType, Serializable {
 	@Override
 	public List<Action> allApplicableActions(State s) {
 		// get all the interactable entities in this state
-		
+		//System.out.println("LIST OF APPLICABLE ACTION");
 		List<Action> actions = new ArrayList<Action>();
 		Map<String, ObjectInstance> objectsMap = ((LabRecruitsState)s).getObjectsMap();
 		for (Entry<String , ObjectInstance> entry : objectsMap.entrySet()) {
@@ -45,9 +45,13 @@ public class LabRecruitsActionType implements ActionType, Serializable {
 			LabRecruitsEntityObject labEntityObject = (LabRecruitsEntityObject) entry.getValue();
 			
 			WorldEntity entity = (WorldEntity) labEntityObject.get(name);
-			LabRecruitsAction labRecruitsAction = new LabRecruitsAction(entity.id);
-			labRecruitsAction.setInteractedEntity(entity);
-			actions.add(labRecruitsAction);
+			//System.out.println("ID & TYPE = "+ entity.id+"  "+ entity.type);
+			if(entity.type == "Switch")   // considering only the switch/button interaction as action
+			{
+				LabRecruitsAction labRecruitsAction = new LabRecruitsAction(entity.id);
+				labRecruitsAction.setInteractedEntity(entity);
+				actions.add(labRecruitsAction);
+			}
 		}
 		return actions;
 	}
