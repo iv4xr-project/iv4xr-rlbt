@@ -13,4 +13,5 @@ import burlap.mdp.core.state.State;
  */
 public interface StateDistance {
 	public double distance (State s1, State s2);
+	public boolean subsume (State s1, State s2);
 }
