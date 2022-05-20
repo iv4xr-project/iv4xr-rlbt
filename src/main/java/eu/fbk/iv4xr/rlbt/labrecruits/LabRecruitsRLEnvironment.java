@@ -310,6 +310,7 @@ public class LabRecruitsRLEnvironment implements Environment {
 
 		DPrint.ul ("========Getting current State from start agent Environment==================");
 		currentState = (LabRecruitsState) currentObservation();
+		DPrint.ul ("====Updating coverage percentage based on initial observation of the agent==================");
 		double rewardval= UpdateGoalList(currentState);   // update coverage goal for the first time
 		DPrint.ul ("Initial State (Agent's view): "+ currentState.toString());
 	}
@@ -455,7 +456,8 @@ public class LabRecruitsRLEnvironment implements Environment {
 	
 	@Override
 	public EnvironmentOutcome executeAction(Action a) {
-		
+		//System.out.println("in executeAction()- firs printing the entities already covered this episode");
+		//printGoalEntities();
 		System.out.println("Inside function executeAction()- action type : "+ a.toString());
 		State oldState = currentState; // state before execution
 		double currHealthpoint = testAgent.getState().worldmodel().health; // get current health point
@@ -471,12 +473,12 @@ public class LabRecruitsRLEnvironment implements Environment {
 		currentState = (LabRecruitsState) currentObservation();  //update current state	after executing the chosen action
 //		updateCycles++;
 		// clearing agents memeory after nth interval before making an observation
-		if((updateCycles % memorywipeinterval)==0) 
+		if((updateCycles>0) && (updateCycles % memorywipeinterval)==0) 
 		{
 			//LabRecruitsState tempstate = currentState;
 			System.out.println("Update cycle= "+updateCycles+  " Clearing agent's memeory");
 			clearAgentMemory();
-			LabRecruitsState tempstate = (LabRecruitsState) currentObservation();  //update current state	after executing the chosen action
+			/*LabRecruitsState tempstate = (LabRecruitsState) currentObservation();  //update current state	after executing the chosen action
 			if(tempstate.numObjects()==0) {
 				System.out.println("After wiping memory, new observation contains 0 entry.");
 				//currentState = tempstate;
@@ -485,30 +487,23 @@ public class LabRecruitsRLEnvironment implements Environment {
 			else {
 				currentState = tempstate;
 				System.out.println("After clearing memory, new observation = "+ currentState);
-			}
+			}*/
 		}
 			
-		//currentState = (LabRecruitsState) currentObservation();  //update current state	after executing the chosen action
+		currentState = (LabRecruitsState) currentObservation();  //update current state	after executing the chosen action
 		boolean terminated = isFinal(currentState);
 		
-		/*TODO:check this consideration- calculate reward if only the action is successful otherwise reward 0*/	
-		if (action.getInteractedEntity().type==LabEntity.SWITCH) {
-			System.out.println("Action type = Switch. Reward calculation only for interacting with a switch");		
-			if (subGoal!=null) {
-				if (subGoal.getStatus().success()==true) {
-					lastReward = getReward(oldState, currentState, action);
-					System.out.println("Action ="+ action.actionName()+  "executed successfully, reward = "+lastReward);
-				}
-				else {
-					lastReward = 0;  
-					System.out.println("Action ="+ action.actionName()+  "execution failure/inprogress, no reward = "+ lastReward);
-					}
-				}
+		if (subGoal!=null) {
+			if (subGoal.getStatus().success()==true) {
+				lastReward = getReward(oldState, currentState, action);
+				System.out.println("Action ="+ action.actionName()+  "executed successfully, reward = "+lastReward);
 			}
-		else {
-			System.out.println("Action type Door .Only to check the status of the door.  Reward = 0");
-			lastReward=0;  // for entity type door we don't give any reward
-		}
+			else {
+				lastReward = 0;  
+				System.out.println("Action ="+ action.actionName()+  "execution failure/inprogress, no reward = "+ lastReward);
+				}
+		}		
+		
 		/*-------------For functional coverage calculation------------------------------------------*/
 		if(functionalCoverageFlag==true) {  // for functional coverage testing
 			double rewardfunccov=0;
@@ -569,6 +564,7 @@ public class LabRecruitsRLEnvironment implements Environment {
 		
 		// each action consumes budget
 		updateCycles++;		
+
 				
 		return outcome;
 	}
@@ -835,7 +831,7 @@ public class LabRecruitsRLEnvironment implements Environment {
 		case CoverageOriented:
 			CoverageOrientedRewardFunction rFunction = (CoverageOrientedRewardFunction)rewardFunction;
 			if(functionalCoverageFlag==true) {
-				System.out.println("Functional coverage testing");
+				System.out.println("check IsFinal() - Functional coverage testing report till now");
 				if(entityList.size()>0 && HasAllGoalSatisfied()==true)
 				{
 					System.out.println("Reached Final state : all entity covered");
