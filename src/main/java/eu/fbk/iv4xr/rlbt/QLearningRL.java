@@ -577,7 +577,7 @@ public class QLearningRL extends MDPSolver implements QProvider, LearningAgent, 
 				}
 				else
 				{
-					System.out.println("NOT subsume.s= "+s.s().toString()+"  node = "+node.s.s().toString());
+					//System.out.println("NOT subsume.s= "+s.s().toString()+"  node = "+node.s.s().toString());
 				}
 			}
 		}
@@ -586,22 +586,32 @@ public class QLearningRL extends MDPSolver implements QProvider, LearningAgent, 
 	
 	private QLearningStateNode GetSimilarStateEntryinQtable(HashableState s) {
 		System.out.println("IN GetSimilarEntry(), compare = "+s.s().toString());
+		QLearningStateNode similarnode=null;
+		double maxstatesimilarity=0;
 		QLearningStateNode nodeentry = qFunction.get(s);		
-		if (qFunction.size()>0 && nodeentry==null) {
+		if (qFunction.size()>0 && nodeentry==null) {						
 			for (HashableState key: qFunction.keySet()) {
 				QLearningStateNode node = qFunction.get(key);
-				boolean flagsubs =  stDistFunction.subsume(s.s(), node.s.s());  // check if s is subsumed in node
-				if (flagsubs==true) {
-					System.out.println("YES SUBSUMES.s= "+s.s().toString()+"  node = "+node.s.s().toString());
+				double similaritymeasure =  stDistFunction.statesimilarity(s.s(), node.s.s());  // check if s is subsumed in node
+				if (similaritymeasure==1) {
+					System.out.println("YES total SUBSUMES.s= "+s.s().toString()+"  node = "+node.s.s().toString());
 					return node;
 				}
 				else
 				{
-					System.out.println("NOT subsume.s= "+s.s().toString()+"  node = "+node.s.s().toString());
+					if(similaritymeasure > maxstatesimilarity) 
+					{
+						maxstatesimilarity = similaritymeasure;
+						similarnode =  node;
+						System.out.println("Partial subsume.s= "+s.s().toString()+"  node = "+node.s.s().toString()+"  subsume ratio = "+ similaritymeasure);
+					}					
 				}
 			}
 		}
-		return null;
+		if (similarnode==null)
+			System.out.println("NOT subsume.s= "+s.s().toString());
+		
+		return similarnode;
 	}
 
 
@@ -759,7 +769,7 @@ public class QLearningRL extends MDPSolver implements QProvider, LearningAgent, 
 				curState = this.stateHash(newstate);
 			}*/
 			System.out.println("q learning - make new observation");
-			curState = this.stateHash(env.currentObservation());
+			curState = this.stateHash(env.currentObservation());  //--- TODO: temporary 
 			this.totalNumberOfSteps++;
 		}
 		System.out.println("Action seq "+ea.actionSequence.size()+"  ="+ea.actionSequence);
@@ -929,19 +939,40 @@ public class QLearningRL extends MDPSolver implements QProvider, LearningAgent, 
 	/*---------------------Test QLearning Agent------------------------------------------------------------------------*/
 	public Episode testQLearingAgent(Environment env, int maxSteps) {	
 		System.out.println("---------------------------------------------------------------\n Test  QLearning agent");
-		env.resetEnvironment();
+		this.stDistFunction = new JaccardDistance(); 
 		State initialState = env.currentObservation();		
 		Episode episode = new Episode(initialState);
 		HashableState curState = this.stateHash(initialState);
 		
-		System.out.println("Hashed state = " +curState+ "hash value  = "+ curState.hashCode());
+		System.out.println("state = " +initialState.toString());
 		//System.out.println("In runLearningEpisode() - Starting while() loop");
 		eStepCounter = 0;
 
 		//maxQChangeInLastEpisode = 0.;
 		while(!env.isInTerminalState() && (eStepCounter < maxSteps || maxSteps == -1)){
+			//------first check if this state or similar entry exists in Q-table
+			QLearningStateNode similarnode=null;
+			if (qFunction.size()>0 && ((qFunction.containsKey(curState)==false)))
+			{
+				System.out.println("In testQLearningAgent() - check for similar state entry in q table");
+				similarnode = GetSimilarStateEntryinQtable(curState);
+			
+				if (similarnode!=null)
+				{
+					System.out.println("Similar state entry found in qtable");
+					System.out.println("Current state = "+ curState.s().toString());
+					System.out.println("Similar state ="+ similarnode.s.s().toString());
+					curState = similarnode.s;
+				}
+				else {
+					System.out.println("No similar state found ");
+				}
+			}
+
 			Action action = getMaxValuedAction(curState);//learningPolicy.action(curState.s());
 			if (action != null) {
+				System.out.println("action qvalues from Qtable for this state : ");
+				printQtable(curState);
 				QValue curQ = this.getQ(curState, action);
 				
 				EnvironmentOutcome eo;
