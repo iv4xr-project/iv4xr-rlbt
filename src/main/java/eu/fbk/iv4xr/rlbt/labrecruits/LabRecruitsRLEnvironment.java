@@ -65,11 +65,12 @@ public class LabRecruitsRLEnvironment implements Environment {
 	private static boolean AgentDeadFlag = false;
 	private double FullHealthScore =100;
 	private double HealthThreshold = 70;  
+	private boolean testingenvironment = true;
 	
 	public static boolean USE_GRAPHICS = false;     /*for running Labrecruit game with graphic*/
     
 	public int tickbudgetForExplore = 25;
-	public int memorywipeinterval =4;
+	public int memorywipeinterval =2;
 	
 	private LabRecruitsEnvironment labRecruitsAgentEnvironment = null; 
 	private static LabRecruitsTestServer labRecruitsTestServer = null;
@@ -372,8 +373,8 @@ public class LabRecruitsRLEnvironment implements Environment {
 	private void clearAgentMemory () {
 		//System.out.println("Clearing agent's memeory of old observations");
 		testAgent.getState().knownEntities().clear(); // clearing the agent's memory
-		//var surfaceNavGraph = testAgent.getState().pathfinder();
-		//surfaceNavGraph.wipeOutMemory();
+		var surfaceNavGraph = testAgent.getState().pathfinder();
+		surfaceNavGraph.wipeOutMemory();
 	}
 	
 	
@@ -407,11 +408,11 @@ public class LabRecruitsRLEnvironment implements Environment {
 //		}
 		// before making the observation of the state, 
 		// first force the agent to explore the surrounding for changes and refresh its belief (state)
-		DPrint.ul("-------START EXPLORATION  - after an action to update agent's view---------------------------------");
+		/*DPrint.ul("-------START EXPLORATION  - after an action to update agent's view---------------------------------");
 		GoalStructure goal = explore();
 		doAction(goal, maxTicksPerAction);
 		DPrint.ul("-------END EXPLORATION ---------------------------------");
-		
+		*/
 		LabRecruitsState currentState = new LabRecruitsState(false);
 		BeliefState beliefState = testAgent.getState();
 		//testAgent.getState().worldmodel().mergeNewObservation(testAgent.getState().worldmodel());
@@ -454,10 +455,16 @@ public class LabRecruitsRLEnvironment implements Environment {
 		return goal;
 	}
 	
-	@Override
-	public EnvironmentOutcome executeAction(Action a) {
-		//System.out.println("in executeAction()- firs printing the entities already covered this episode");
-		//printGoalEntities();
+	/*explore the environment*/
+	private void doExplore() {
+		DPrint.ul("--In doExplore()------START EXPLORATION ---------------------------------");
+		GoalStructure goal = explore();
+		doAction(goal, maxTicksPerAction);
+		DPrint.ul("-------END EXPLORATION ---------------------------------");
+	}
+	
+	
+	public EnvironmentOutcome executeActionOLD(Action a) {
 		System.out.println("Inside function executeAction()- action type : "+ a.toString());
 		State oldState = currentState; // state before execution
 		double currHealthpoint = testAgent.getState().worldmodel().health; // get current health point
@@ -470,37 +477,48 @@ public class LabRecruitsRLEnvironment implements Environment {
 			// TODO this means the agent cannot do anything, so let the current goal continue?
 		}
 
-		currentState = (LabRecruitsState) currentObservation();  //update current state	after executing the chosen action
-//		updateCycles++;
+		//currentState = (LabRecruitsState) currentObservation();  //update current state	after executing the chosen action
+		// updateCycles++;
+		/*
 		// clearing agents memeory after nth interval before making an observation
 		if((updateCycles>0) && (updateCycles % memorywipeinterval)==0) 
 		{
-			//LabRecruitsState tempstate = currentState;
 			System.out.println("Update cycle= "+updateCycles+  " Clearing agent's memeory");
 			clearAgentMemory();
-			/*LabRecruitsState tempstate = (LabRecruitsState) currentObservation();  //update current state	after executing the chosen action
-			if(tempstate.numObjects()==0) {
-				System.out.println("After wiping memory, new observation contains 0 entry.");
-				//currentState = tempstate;
-				System.out.println("Go on with the last observed state = "+currentState);
-			}
-			else {
-				currentState = tempstate;
-				System.out.println("After clearing memory, new observation = "+ currentState);
-			}*/
+			System.out.println("Check after clearing memory, num of entity in memory = "+testAgent.getState().knownEntities().size());
+			//doExplore();
+		
 		}
-			
+		System.out.println("In executeAction() - do an explore after executing action = "+ a.actionName());
+		doExplore();  // after executing an action the agent should explore to grasp the impact of the action before taking new observation
 		currentState = (LabRecruitsState) currentObservation();  //update current state	after executing the chosen action
+		*/
 		boolean terminated = isFinal(currentState);
 		
+		if (testingenvironment==false) 
+		{
 		if (subGoal!=null) {
-			if (subGoal.getStatus().success()==true) {
+			if (subGoal.getStatus().success()==true) { // reward calculation and next state observation if only goal is successful
+				// clearing agents memeory after nth interval before making an observation
+				if((updateCycles>0) && (updateCycles % memorywipeinterval)==0) 
+				{
+					System.out.println("Update cycle= "+updateCycles+  " Clearing agent's memeory");
+					clearAgentMemory();
+					System.out.println("Check after clearing memory, num of entity in memory = "+testAgent.getState().knownEntities().size());
+					doExplore();
+				
+				}
+				System.out.println("In executeAction() - do an explore after executing action = "+ a.actionName());
+				//doExplore();  // after executing an action the agent should explore to grasp the impact of the action before taking new observation
+				currentState = (LabRecruitsState) currentObservation();  //update current state	after executing the chosen action
+				terminated = isFinal(currentState);
+				
 				lastReward = getReward(oldState, currentState, action);
-				System.out.println("Action ="+ action.actionName()+  "executed successfully, reward = "+lastReward);
+				System.out.println("Action = "+ action.actionName()+  "executed successfully, reward = "+lastReward);
 			}
 			else {
 				lastReward = 0;  
-				System.out.println("Action ="+ action.actionName()+  "execution failure/inprogress, no reward = "+ lastReward);
+				System.out.println("Action =  "+ action.actionName()+  "execution failure/inprogress, no reward = "+ lastReward);
 				}
 		}		
 		
@@ -550,6 +568,95 @@ public class LabRecruitsRLEnvironment implements Environment {
 			AgentDeadFlag= true;	
 			DPrint.ul("STOP SIMULAITON - AGENT DIED = "+testAgent.getState().worldmodel().health );
 		}
+		} // for testing environment
+		/*----------------------------------------------------------------------------------------------------------*/
+		//DPrint.ul("Goal status :" + lastReward);
+		//DPrint.ul("Goal status :" + subGoal.getStatus().toString());
+		
+		EnvironmentOutcome outcome = new EnvironmentOutcome(oldState, action, currentState, lastReward, terminated);
+		
+		DPrint.ul ("From: " + oldState.toString() + "\n To: " + currentState.toString() + 
+				" Action: " + action.actionName() + " Reward: " + lastReward + 
+				" Goal status: " + (subGoal != null?subGoal.getStatus().toString():" NULL"));
+		//DPrint.ul("Health penalty = "+this.healthpenalty);
+		
+		
+		// each action consumes budget
+		updateCycles++;						
+		return outcome;
+	}
+
+	
+	@Override
+	public EnvironmentOutcome executeAction(Action a) {
+		System.out.println("Inside function executeAction()- action name : "+ a.actionName());
+		State oldState = currentState; // state before execution
+		double currHealthpoint = testAgent.getState().worldmodel().health; // get current health point
+		LabRecruitsAction action = (LabRecruitsAction)a;  // this Action a should be mapped into a goal that the agent can execute
+		GoalStructure subGoal = getActionGoal(action.getActionId(), action.getInteractedEntity().type);
+		
+		if (subGoal != null) {  // if action goal is not empty, execute action
+			doAction(subGoal, maxTicksPerAction);
+		} else {
+			// TODO this means the agent cannot do anything, so let the current goal continue?
+		}
+
+		boolean terminated = isFinal(currentState); // check if the current state is terminal state
+		
+		if (subGoal!=null) 
+		{
+			if (subGoal.getStatus().success()==true) 
+			{ // reward calculation and next state observation if only goal is successful
+				// clearing agents memeory after nth interval before making an observation
+				if((updateCycles>0) && (updateCycles % memorywipeinterval)==0) 
+				{
+					System.out.println("Update cycle= "+updateCycles+  " Clearing agent's memeory");
+					clearAgentMemory();
+					System.out.println("Check after clearing memory, num of entity in memory = "+testAgent.getState().knownEntities().size());
+					//doExplore();					
+				}
+					
+				System.out.println("In executeAction() - do an explore after executing action = "+ a.actionName());
+				doExplore();  // after executing an action the agent should explore to grasp the impact of the action before taking new observation
+				currentState = (LabRecruitsState) currentObservation();  //update current state	after executing the chosen action
+				terminated = isFinal(currentState);
+					
+				if (testingenvironment==true) {
+					lastReward =0;
+					System.out.println("Testing environment reward = "+lastReward);
+					/*-------------For functional coverage calculation (for all RL algorithm)------------------------------------------*/
+					if(functionalCoverageFlag==true)  
+					{
+						double rewardfunc= UpdateGoalList(currentState);
+					}
+				}else {
+				lastReward = getReward(oldState, currentState, action);
+				}
+				System.out.println("Action = "+ action.actionName()+  "executed successfully, reward = "+lastReward);
+			}
+			else 
+			{
+				lastReward = 0;  
+				System.out.println("Action =  "+ action.actionName()+  "execution failure/inprogress, no reward = "+ lastReward);
+			}
+		
+			/*------------Penalty for health loss and death- applicable to all kind of RL algorithm*/
+			//case 1: penalty for health loss. penalty value is the point that is lost for executing this action  
+			if(testAgent.getState().worldmodel().health<HealthThreshold) {  // penalty if only health point is below threshold
+				lastReward =  lastReward- (currHealthpoint - testAgent.getState().worldmodel().health);
+				DPrint.ul("Penalty for health loss = "+(currHealthpoint - testAgent.getState().worldmodel().health)+"  final reward ="+lastReward);
+			}
+			
+			//case 2: big penalty if agent dies and end the episode
+			if (testAgent.getState().worldmodel().health <= 0)
+			{
+				terminated = true;
+				//System.out.println("----EMERGENCY NOTICE : AGENT DIED. Health point =  "+ testAgent.getState().worldmodel().health);
+				lastReward =lastReward - 100*100;
+				AgentDeadFlag= true;	
+				DPrint.ul("STOP SIMULAITON - AGENT DIED = "+testAgent.getState().worldmodel().health );
+			}
+		} // if goal is not empty
 		/*----------------------------------------------------------------------------------------------------------*/
 		//DPrint.ul("Goal status :" + lastReward);
 		//DPrint.ul("Goal status :" + subGoal.getStatus().toString());
@@ -567,6 +674,7 @@ public class LabRecruitsRLEnvironment implements Environment {
 
 				
 		return outcome;
+
 	}
 
 	
@@ -609,74 +717,6 @@ public class LabRecruitsRLEnvironment implements Environment {
 	     return rewardfuncCov;	     
 	}
 
-	// for testing q-learning agent after training
-	public void EvaluateQLearningAgent(Map<HashableState, QLearningStateNode> qFunction) {
-	
-		DPrint.ul("\n\nTESTING :----------Testing Q learning agent----- ------- : ");
-	
-		// get the final q 
-				System.out.println("key set:  "+qFunction.keySet().size());
-//				System.out.println("TESTING : MAX q val : "+agent.getQs(agent.qFunction.keySet().iterator().next()));
-				
-				System.out.println("Q function size :  " +  qFunction.size());
-				for (HashableState key:qFunction.keySet()){
-					//QLearningStateNode node = agent.qFunction.get(key);
-					//node = new QLearningStateNode(key);
-					//List<Action> gas =agent.applicableActions(key.s());
-					System.out.println("---------------------------Key name : "+key.toString()+ "     "+qFunction.get(key).toString());
-					System.out.println("first qentry for this key :  action : "+qFunction.get(key).qEntry.get(0).a.actionName()+"   state :  "+qFunction.get(key).qEntry.get(0).s+"  qval:  "+qFunction.get(key).qEntry.get(0).q);
-					System.out.println("second qentry for this key :  action : "+qFunction.get(key).qEntry.get(1).a.actionName()+"   state :  "+qFunction.get(key).qEntry.get(1).s+"  qval:  "+qFunction.get(key).qEntry.get(1).q);
-					System.out.println("third qentry for this key :  action : "+qFunction.get(key).qEntry.get(2).a.actionName()+"   state :  "+qFunction.get(key).qEntry.get(2).s+"  qval:  "+qFunction.get(key).qEntry.get(2).q);
-					System.out.println("fourth qentry for this key :  action : "+qFunction.get(key).qEntry.get(3).a.actionName()+"   state :  "+qFunction.get(key).qEntry.get(3).s+"  qval:  "+qFunction.get(key).qEntry.get(3).q);
-					
-					//System.out.println("STATE :   "+agent.qFunction.keySet().iterator().next().s().toString());
-					//System.out.print("action  : "+agent.getStateNode(key).qEntry.iterator().next().a.actionName()+"   :  "+agent.getStateNode(key).qEntry.iterator().next().a);
-					//System.out.print("states : "+agent.getStateNode(key).qEntry.iterator().next().s);
-					//System.out.print("value : "+agent.getStateNode(key).qEntry.iterator().next().q);	
-					//System.out.print("\n");
-					
-				}
-				
-		// set the testing goal here
-		//GoalStructure goal = getActionGoal("door3", LabEntity.DOOR);
-		GoalStructure goal = getActionGoal(goalEntity, goalEntityType); //observe(); //getActionGoal("door1", LabEntity.DOOR); // getTestGoal ();
-		DPrint.ul("Testing Goal : "+goal.toString() +"  status : "+goal.getStatus());
-		doAction(goal, maxTicksPerAction);
-
-		currentState = (LabRecruitsState) currentObservation();
-		DPrint.ul ("TESTING : Initial State (Agent's view): "+ currentState.toString());
-
-		// state before execution
-		/*State oldState = currentState;
-		
-		LabRecruitsAction action = (LabRecruitsAction)a;
-		GoalStructure subGoal = getActionGoal(action.getActionId(), action.getInteractedEntity().type);
-		
-		
-		if (subGoal != null) {
-			doAction(subGoal);
-		} else {
-			// TODO this means the agent cannot do anything, so let the current goal continue?
-		}
-
-		updateCycles++;
-				
-		//update current state		
-		currentState = (LabRecruitsState) currentObservation();
-		
-		boolean terminated = isFinal(currentState);
-		lastReward = getReward(oldState, currentState, action);
-		
-		EnvironmentOutcome outcome = new EnvironmentOutcome(oldState, action, currentState, lastReward, terminated);
-		
-		DPrint.ul ("From: " + oldState.toString() + " To: " + currentState.toString() + 
-				" Action: " + action.actionName() + " Reward: " + lastReward + 
-				" Goal status: " + (subGoal != null?subGoal.getStatus().toString():" NULL"));
-		*/
-	}
-
-
-	
 	/**
 	 * make the agent simply observe the environment, currently used at the start of the simulation
 	 * @return
@@ -784,9 +824,15 @@ public class LabRecruitsRLEnvironment implements Environment {
 	 */
 //	@Override
 	public double getReward(State state1, State state2, Action action) {
-		
-		//System.out.println("Action  = "+action.actionName());
 		double reward = 0;
+		double rewardfunccov=0;
+		
+		/*-------------For functional coverage calculation (for all RL algorithm)------------------------------------------*/
+		if(functionalCoverageFlag==true)  
+		{
+			rewardfunccov= UpdateGoalList(currentState);
+		}
+		
 				
 		if (isFinal(state2)) {			
 			reward = 100;
@@ -794,10 +840,14 @@ public class LabRecruitsRLEnvironment implements Environment {
 		} else {			
 			switch(rewardtype) {  //enable either sparse or curiosityDriven reward 
 			case Sparse:	
+				System.out.println("Sparse Reward = "+reward);
 				return 0;				
 		
 			case CuriousityDriven:
 				reward = rewardFunction.reward(state1, action, state2, testAgent.getState());
+				double curiRe =  reward;
+				reward =reward +rewardfunccov; // adding reward from functional coverage calculation
+				System.out.println("Total reward= "+reward +"  Curiosity Reward = "+curiRe +"  Functional coverage reward= "+rewardfunccov);
 				return reward;
 			
 			default:
