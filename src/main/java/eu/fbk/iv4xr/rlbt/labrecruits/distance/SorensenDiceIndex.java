@@ -72,6 +72,12 @@ public class SorensenDiceIndex implements StateDistance {
 		// TODO Auto-generated method stub
 		return false;
 	}
+
+	@Override
+	public double statesimilarity(State s1, State s2) {
+		// TODO Auto-generated method stub
+		return 0;
+	}
 	
 
 }
