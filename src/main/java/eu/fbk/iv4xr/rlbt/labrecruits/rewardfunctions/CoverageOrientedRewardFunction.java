@@ -23,7 +23,7 @@ public class CoverageOrientedRewardFunction extends AbstractRlbtRewardFunction {
 
 	//store visited states from environment in an episode
 	HashMap<String, Integer> visitedStates = null;//new HashMap<String, Integer>();
-	int stateOccuranceThreshold =4;
+	int stateOccuranceThreshold =3;
 	int actionsSinceLastNewState = 0;
 	//int HealthScoreThreshold =70;  // considering highest health score as 100
 	//int FullHealthScore=100;
@@ -50,21 +50,44 @@ public class CoverageOrientedRewardFunction extends AbstractRlbtRewardFunction {
 			//System.out.println("Action  = "+action.actionName()+"  Stuck , reward = "+reward);
 		} else {
 			//first - consider explored states- give reward for exploring a new state
+			int actionOccurance =0;
+			
+			//---------------Method : Action occurrence counter------------------------------------------------------------
+			actionOccurance =  getNumofActionOccurance(action);
+			// give reward for exploring a new quite different state
+			if (actionOccurance<=stateOccuranceThreshold) {
+				//System.out.println("Curiosity reward Test : without reward for visiting new state - combination of entities");
+				//reward = reward+ (dissimilarity*weight + PENALTY);
+				//System.out.println("Action  = "+action.actionName()+" Dissimilarity and fewer State Occurance, reward = "+reward);
+			}
+			//give penalty for exploring same state 
+			if (actionOccurance>stateOccuranceThreshold)
+			{
+				reward = reward - (PENALTY);
+				System.out.println("Action  = "+action.actionName()+"  occurance= "+actionOccurance+"  Action selection over threshold,  penalty = "+reward);
+			}
+			//-------------------------------------------------------------------------------------------------------
+			
+			/*//---------------Method : State occurrence counter------------------------------------------------------------
 			double sim = getStateDistanceFunction().distance(previousState, currentState); // getStatesSimilarityMeasures(state1,state2); 
 			double dissimilarity = (1-sim);
 			int stateOccurance = 0;
+			
 			stateOccurance =  getNumofStateOccurance(currentState.toString());
 			// give reward for exploring a new quite different state
 			if (dissimilarity >=0.2 && stateOccurance<=stateOccuranceThreshold) {
-				System.out.println("Curiosity reward Test : without reward for visiting new state - combination of entities");
-				//reward = reward+ (dissimilarity*weight + PENALTY);
+				//System.out.println("Curiosity reward Test : without reward for visiting new state - combination of entities");
+				reward = reward+ (dissimilarity*weight + PENALTY);
+				//System.out.println("Action  = "+action.actionName()+" Dissimilarity and fewer State Occurance, reward = "+reward);
 			}
 			//give penalty for exploring same state 
 			if (stateOccurance>stateOccuranceThreshold)
 			{
 				reward = reward - (dissimilarity*weight + PENALTY);
-				//System.out.println("Action  = "+action.actionName()+"  State visited over threshold,  penalty = "+reward);
+				System.out.println("Action  = "+action.actionName()+"  State occurance= "+stateOccurance+"  State visited over threshold,  penalty = "+reward);
 			}
+			//-------------------------------------------------------------------------------------------------------
+			 */
 			//System.out.println("dissimilarity = "+dissimilarity+"  statevisited = "+stateOccurance);
 			// second -  consider agent's movement - reward movement, penalize staying at the same position
 			/*List<Vec3> recentPositions = agentBeliefState.getRecentPositions();
@@ -90,6 +113,18 @@ public class CoverageOrientedRewardFunction extends AbstractRlbtRewardFunction {
 			//reward =  reward - healthloss;   // penalty as the absolute value of health loss
 		}
 		return reward;
+	}
+
+	private int getNumofActionOccurance(Action action) {
+		int numoftimesvisited =0;
+		if (visitedStates.containsKey(action.toString())){
+			numoftimesvisited = visitedStates.get(action.toString());
+			visitedStates.put(action.toString(), (numoftimesvisited+1));
+			return numoftimesvisited;
+		}else {  // make a new entry for this state
+			visitedStates.put(action.toString(), 1);
+			return numoftimesvisited;
+		}
 	}
 
 	/** 
