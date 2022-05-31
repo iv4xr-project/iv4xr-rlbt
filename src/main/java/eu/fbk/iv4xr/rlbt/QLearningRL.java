@@ -694,7 +694,7 @@ public class QLearningRL extends MDPSolver implements QProvider, LearningAgent, 
 			if (qFunction.size()>0)
 			{
 				System.out.println("In runLearningEpisode() - check for similar state entry in q table");
-				similarnode = GetSimilarStateEntryinQtable(curState);
+				similarnode = GetSimilarEntry(curState);
 			
 				if (similarnode!=null)
 				{
