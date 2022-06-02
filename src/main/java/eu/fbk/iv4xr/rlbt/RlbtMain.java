@@ -275,8 +275,9 @@ public class RlbtMain{
 	 * @param line
 	 * @param options
 	 * @throws FileNotFoundException 
+	 * @throws InterruptedException 
 	 */
-	private Episode executeTesting (CommandLine line, Options options) throws FileNotFoundException {
+	private Episode executeTesting (CommandLine line, Options options) throws FileNotFoundException, InterruptedException {
 		// check algorithm and execute corresponding method
 		String alg = (String)burlapConfiguration.getParameterValue("burlap.algorithm");
 		if (alg.equalsIgnoreCase(BurlapAlgorithm.QLearning.toString())) {
@@ -294,15 +295,17 @@ public class RlbtMain{
 	 * @param line
 	 * @param options
 	 * @throws FileNotFoundException 
+	 * @throws InterruptedException 
 	 */
-	private Episode executeQLearningTestingOnLabRecruits () throws FileNotFoundException {
+	private Episode executeQLearningTestingOnLabRecruits () throws FileNotFoundException, InterruptedException {
 		/*initialize RL environment*/
 		LabRecruitsRLEnvironment labRecruitsRlEnvironment = new LabRecruitsRLEnvironment(lrConfiguration, new JaccardDistance());
 		
 		System.out.println("Initializing domain. Opening level :"+lrConfiguration.getParameterValue("labrecruits.level_name"));
 		DomainGenerator lrDomainGenerator = new LabRecruitsDomainGenerator();
 		final SADomain domain = (SADomain) lrDomainGenerator.generateDomain();
-		
+
+		int maxActionsPerEpisode = (int)lrConfiguration.getParameterValue("labrecruits.max_actions_per_episode");
 		/*create Reinforcement Learning (Q-learning) agent*/
 		QLearningRL agent = new QLearningRL(domain, 
 				(double)burlapConfiguration.getParameterValue("burlap.qlearning.gamma"), 
@@ -311,26 +314,20 @@ public class RlbtMain{
 				(double)burlapConfiguration.getParameterValue("burlap.qlearning.lr"));
 		long startTime = System.currentTimeMillis();
 		
-		String qtablePath = (String)burlapConfiguration.getParameterValue("burlap.qlearning.out_qtable");
+		String qtablePath = outputDir + File.separator + "Cqtable.ser";//(String)burlapConfiguration.getParameterValue("burlap.qlearning.out_qtable");
 		agent.deserializeQTable(qtablePath );
 		agent.printFinalQtable(System.out);
 		
-		labRecruitsRlEnvironment.resetStateMemory();   // reset state buffer at the beginning of an episode
-		Episode episode = agent.testQLearingAgent(labRecruitsRlEnvironment, 1900);
+		System.out.println("Start testing agent");
+		labRecruitsRlEnvironment.startAgentEnvironment();
 		
-		long estimatedTime = System.currentTimeMillis() - startTime;
-		System.out.println("Time - Testing : "+estimatedTime);
+		Episode episode = agent.testQLearingAgent(labRecruitsRlEnvironment, maxActionsPerEpisode);
 
-		
+		labRecruitsRlEnvironment.resetStateMemory();   // reset state buffer at the beginning of an episode
 		labRecruitsRlEnvironment.stopAgentEnvironment();  /*stop RL agent environment*/
-		
-		String episodeBaseName = outputDir + "episode";
-		SerializationUtil.serializeEpisode(episode, episodeBaseName );
-		
+	
 		return episode;
 	}
-
-
 
 	
 	/**
