@@ -65,7 +65,7 @@ public class LabRecruitsRLEnvironment implements Environment {
 	private static boolean AgentDeadFlag = false;
 	private double FullHealthScore =100;
 	private double HealthThreshold = 70;  
-	private boolean testingenvironment = true;
+	private boolean testingenvironment = false;
 	
 	public static boolean USE_GRAPHICS = false;     /*for running Labrecruit game with graphic*/
     
@@ -373,8 +373,8 @@ public class LabRecruitsRLEnvironment implements Environment {
 	private void clearAgentMemory () {
 		//System.out.println("Clearing agent's memeory of old observations");
 		testAgent.getState().knownEntities().clear(); // clearing the agent's memory
-		var surfaceNavGraph = testAgent.getState().pathfinder();
-		surfaceNavGraph.wipeOutMemory();
+		//var surfaceNavGraph = testAgent.getState().pathfinder();
+		//surfaceNavGraph.wipeOutMemory();
 	}
 	
 	
