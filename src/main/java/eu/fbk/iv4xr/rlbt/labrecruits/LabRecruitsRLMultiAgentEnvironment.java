@@ -41,6 +41,7 @@ import eu.fbk.iv4xr.rlbt.distance.StateDistance;
 import eu.fbk.iv4xr.rlbt.labrecruits.rewardfunctions.CoverageOrientedRewardFunction;
 import eu.fbk.iv4xr.rlbt.labrecruits.rewardfunctions.GoalOrientedRewardFunction;
 import eu.fbk.iv4xr.rlbt.rewardfunction.RlbtRewardFunction;
+import eu.iv4xr.framework.mainConcepts.TestAgent;
 import eu.iv4xr.framework.mainConcepts.TestDataCollector;
 import eu.iv4xr.framework.mainConcepts.WorldEntity;
 import eu.iv4xr.framework.spatial.Vec3;
@@ -48,8 +49,11 @@ import game.LabRecruitsTestServer;
 import game.Platform;
 import nl.uu.cs.aplib.mainConcepts.Goal;
 import nl.uu.cs.aplib.mainConcepts.GoalStructure;
+import nl.uu.cs.aplib.mainConcepts.Tactic;
 import nl.uu.cs.aplib.mainConcepts.Tactic.PrimitiveTactic;
+import nl.uu.cs.aplib.multiAgentSupport.Acknowledgement;
 import nl.uu.cs.aplib.multiAgentSupport.ComNode;
+import nl.uu.cs.aplib.multiAgentSupport.Message;
 import world.BeliefState;
 import world.LabEntity;
 import world.LabWorldModel;
@@ -206,6 +210,7 @@ public class LabRecruitsRLMultiAgentEnvironment implements Environment {
 			//printGoalEntities();
 		}
 	}
+	
 	public void printGoalEntities() {
 		System.out.println("Printing Goal Entity List - functional coverage testing, total entity = "+ entityList.size());
 		for (String k : entityList.keySet()) {
@@ -339,7 +344,7 @@ public class LabRecruitsRLMultiAgentEnvironment implements Environment {
 				  entityList.put(ent,0);
 				  //GlobalEntityList.put(ent,0);
 			  }	
-			entityList.put(entity.toString(),0);			
+			//entityList.put(entity.toString(),0);			
 		}	
 	}
 	
@@ -441,6 +446,7 @@ public class LabRecruitsRLMultiAgentEnvironment implements Environment {
 
 
 	public void RunPassiveAgent() {
+		clearAgentMemory(testAgentPassive);
 		System.out.println("Passive agent works now --- ");
 		//passive agent will only explore the environment and take an observation after each exploration event
 		GoalStructure goal =  explore(); //getActionGoal(goalEntity, goalEntityType);
@@ -590,12 +596,26 @@ public class LabRecruitsRLMultiAgentEnvironment implements Environment {
 		passive agent also performs its action of exploration
 		-------------------------------------------------------------------------*/
 		RunPassiveAgent();
+		GoalStructure goalshareobj = shareObservation(testAgentPassive.getId(), testAgentActive.getId());
+		doAction(goalshareobj, maxTicksPerAction, testAgentPassive);
+		// make an observation and update agent
+        //GoalStructure goal = g.withTactic(TacticLib.shareObservation(testAgentPassive.getId())).lift();
+
 		/*-----------------------------------------------------------------------
 		Active RL agent
 		-------------------------------------------------------------------------*/
 		System.out.println("Active RL agent works now --- ");
 		System.out.println("Inside function executeAction()- action name : "+ a.actionName());
+		
 		currentState = (LabRecruitsState) currentObservation();
+		System.out.println("Active agent- observation before receive" + currentState);
+		
+		GoalStructure goalreceive=  receiveObservationShare();
+		doAction(goalreceive, maxTicksPerAction, testAgentActive);
+		
+		currentState = (LabRecruitsState) currentObservation();
+		System.out.println("Active agent- observation after receive" + currentState);
+			
 		State oldState = currentState; // state before execution
 		System.out.println("Old state = "+ oldState);
 		//double currHealthpoint = testAgentActive.getState().worldmodel().health; // get current health point
@@ -610,7 +630,7 @@ public class LabRecruitsRLMultiAgentEnvironment implements Environment {
 
 		boolean terminated = isFinal(currentState); // check if the current state is terminal state
 		
-		if (subGoal!=null) 
+		if (subGoal!=null)
 		{
 			if (subGoal.getStatus().success()==true) 
 			{ // reward calculation and next state observation if only goal is successful
@@ -684,6 +704,7 @@ public class LabRecruitsRLMultiAgentEnvironment implements Environment {
 		updateCycles++;					
 		return outcome;
 	}
+
 
 	private double GetGeneralReward() {
 		// TODO Auto-generated method stub
@@ -813,6 +834,34 @@ public class LabRecruitsRLMultiAgentEnvironment implements Environment {
         return goal;
     }
 	
+	/**
+	 * make the agent simply observe the environment, currently used at the start of the simulation
+	 * @return
+	 */
+	private static GoalStructure shareObservation(String agentid, String targetagentid) {
+        //always true
+        Goal g = goal(String.format("share observation to agent"))
+                .toSolve((BeliefState belief) -> true);
+
+        // make an observation and update agent
+        GoalStructure goal = g.withTactic(shareObservationToSingleAgent(agentid, targetagentid)).lift();
+
+        return goal;
+    }
+	
+	private static GoalStructure receiveObservationShare() {
+        //always true
+        Goal g = goal(String.format("share observation to agent"))
+                .toSolve((BeliefState belief) -> true);
+
+        // make an observation and update agent
+        GoalStructure goal = g.withTactic(TacticLib.receiveObservationShare()).lift();
+
+        return goal;
+    }
+	
+	//receiveObservationShare
+	
 	/*private static GoalStructure gotoEntityPosition(String entityId) {
 		float deltaSq =(float) (0.1*0.1) ;
 		Goal goal = 
@@ -891,6 +940,17 @@ public class LabRecruitsRLMultiAgentEnvironment implements Environment {
 		}
 		return isFinal;
 	}
+	
+    public static Tactic shareObservationToSingleAgent(String id, String targetId){
+        return action("Share map to another agent")
+                . do1((BeliefState belief)-> {
+                	var obs = belief.env().observe(belief.id);
+                	// force wom update:
+                	belief.mergeNewObservationIntoWOM(obs) ;
+                    Acknowledgement a = belief.messenger().send(id,0, Message.MsgCastType.SINGLECAST, targetId,"ObservationSharing",obs) ;
+                    return belief;
+                }).lift();
+    }
 
 	@Override
 	public void resetEnvironment() {
