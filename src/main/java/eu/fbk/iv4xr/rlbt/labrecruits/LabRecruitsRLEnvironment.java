@@ -4,11 +4,10 @@
 package eu.fbk.iv4xr.rlbt.labrecruits;
 
 import static nl.uu.cs.aplib.AplibEDSL.*;
-import static nl.uu.cs.aplib.AplibEDSL.SEQ;
-import static nl.uu.cs.aplib.AplibEDSL.goal;
 
 import java.io.BufferedReader;
 import java.io.File;
+import java.io.FileNotFoundException;
 import java.io.FileReader;
 import java.io.IOException;
 import java.nio.file.Paths;
@@ -65,12 +64,13 @@ public class LabRecruitsRLEnvironment implements Environment {
 	private static boolean AgentDeadFlag = false;
 	private double FullHealthScore =100;
 	private double HealthThreshold = 70;  
-	private boolean testingenvironment = false;
+	private boolean testingenvironment = true;
 	
 	public static boolean USE_GRAPHICS = false;     /*for running Labrecruit game with graphic*/
     
 	public int tickbudgetForExplore = 25;
 	public int memorywipeinterval =2;
+	public boolean exploreoptionOn=true;
 	
 	private LabRecruitsEnvironment labRecruitsAgentEnvironment = null; 
 	private static LabRecruitsTestServer labRecruitsTestServer = null;
@@ -95,7 +95,7 @@ public class LabRecruitsRLEnvironment implements Environment {
 	private String goalEntityStatus = "isOpen"; // for a door, "isOn" for a button
 	private String goalEntityStatusValue = "true";
 	
-	private String agentName = "agent1";
+	private String agentName= "agent1";
 	
 	private RlbtRewardFunction rewardFunction;
 	
@@ -109,6 +109,7 @@ public class LabRecruitsRLEnvironment implements Environment {
 	private int currentEpisode = 1;
 	//private int healthpenalty;
 	
+	private HashMap<String, Integer> connectionList = null;    // store connection between buttons and doors
 	private HashMap<String, Integer> entityList = null;    // store entity coverage per episode
 	//private HashMap<String, Integer> GlobalEntityList = null;   // store entity coverage for all episodes
 	private ArrayList<String> GlobalEntityList = null;
@@ -124,8 +125,8 @@ public class LabRecruitsRLEnvironment implements Environment {
 		goalEntityStatus = (String) lrConfiguration.getParameterValue("labrecruits.target_entity_property_name");
 		goalEntityType = checkEntityType((String) lrConfiguration.getParameterValue("labrecruits.target_entity_type"));
 		goalEntityStatusValue = String.valueOf(lrConfiguration.getParameterValue("labrecruits.target_entity_property_value"));
-		agentName = (String) lrConfiguration.getParameterValue("labrecruits.agent_id");
 		
+		agentName = (String) lrConfiguration.getParameterValue("labrecruits.agent_id");
 		
 		labRecruitsLevel = (String) lrConfiguration.getParameterValue("labrecruits.level_name");
 		labRecruitsLevelFolder = (String) lrConfiguration.getParameterValue("labrecruits.level_folder");
@@ -145,6 +146,10 @@ public class LabRecruitsRLEnvironment implements Environment {
 		//this.entityList = new HashMap<String, Integer>();
 		AgentDeadFlag = false;
 		functionalCoverageFlag = (Boolean) lrConfiguration.getParameterValue("labrecruits.functionalCoverage");  // temporary variable
+		
+		testingenvironment = (Boolean) lrConfiguration.getParameterValue("labrecruits.testingsession");  // identify training or testing sesson
+		memorywipeinterval = (int) lrConfiguration.getParameterValue("labrecruits.memory_clean_interval_action");
+		exploreoptionOn = (Boolean) lrConfiguration.getParameterValue("labrecruits.exploreEventOn"); 
 	}
 	
 	private RlbtRewardFunction getRewardFunction(SearchMode searchMode, StateDistance stateDistance) {
@@ -192,7 +197,7 @@ public class LabRecruitsRLEnvironment implements Environment {
 	private void printGoalEntities() {
 		System.out.println("Printing Goal Entity List - functional coverage testing, total entity = "+ entityList.size());
 		for (String k : entityList.keySet()) {
-			System.out.println("entity = "+k+"   visit Frequency= "+entityList.get(k));
+			System.out.println("Entity name = "+k+"   visit Frequency= "+entityList.get(k));
 		}	
 		/*System.out.println("----------------------Global entry list =  "+GlobalEntityList.size());
 		for(int i = 0; i < GlobalEntityList.size(); i++) {   
@@ -206,6 +211,104 @@ public class LabRecruitsRLEnvironment implements Environment {
 		for (String k : entityList.keySet()) {
 			entityList.put(k, 0);
 		}
+	}
+	
+	private void printConnectionList() {
+		System.out.println("Testing - Printing Connection list between entitieys, total connection entry = "+ connectionList.size());
+		for (String k : connectionList.keySet()) {
+			System.out.println("connection name = "+k+"   visit Frequency= "+connectionList.get(k));
+		}	
+		/*System.out.println("----------------------Global entry list =  "+GlobalEntityList.size());
+		for(int i = 0; i < GlobalEntityList.size(); i++) {   
+		    System.out.println(GlobalEntityList.get(i));
+		}*/		
+		
+	}
+	
+	/*Testing  -  test of the logical connection exists in the level*/
+	public void LoadConnectionList(String levelName, String levelFolder) {
+		String fullPath = Paths.get(levelFolder, levelName + ".csv").toAbsolutePath().toString();
+		
+		String line = "";
+	    String splitBy = ",";
+	    //parsing a CSV file into BufferedReader class constructor  
+	    //BufferedReader br;
+		try {
+			//BufferedReader br;
+			BufferedReader br = new BufferedReader(new FileReader(fullPath));
+			while ((line = br.readLine()) != null)
+		    {
+		    	//System.out.println("Line = "+line);
+		    	if (line.startsWith("|w") || line.startsWith("|f")|| line.startsWith("w")||line.startsWith("f"))
+		    		break;
+		    	String[] token = line.split(splitBy);
+		    	String ent="";
+		        for (int i=0;i<token.length;i++) 
+		        {
+		        	ent = ent+token[i]+",";		        		
+		        }
+		        ent =  ent.substring(0, ent.length() - 1);
+		        System.out.println("connection line = "+ent);
+		        connectionList.put(ent,0);
+		    }
+			LoadConnectionLessEntity(labRecruitsLevel,labRecruitsLevelFolder);
+			
+		} catch (FileNotFoundException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		} catch (IOException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+	    
+	}
+	
+	private void LoadConnectionLessEntity(String levelName, String levelFolder) {
+		String fullPath = Paths.get(levelFolder, levelName + ".csv").toAbsolutePath().toString();
+		String line = "";
+	    String splitBy = ",";
+	    String secondsplit ="\\^";
+	    try {
+	      //parsing a CSV file into BufferedReader class constructor  
+	      BufferedReader br = new BufferedReader(new FileReader(fullPath));
+	      while ((line = br.readLine()) != null)
+	      {
+	    	  //System.out.println("Line = "+line);
+	    	  if (line.contains("^")) {
+	    		  String[] token = line.split(splitBy);
+	    		  //System.out.println("Last token = "+ token[token.length-1]);
+	    		  for (int i=0;i<token.length;i++) {
+	    			  if(token[i].contains(":b")) { //|| token[i].contains(":d>")) {  // consider only buttons
+	    				  String[] smalltoken = token[i].split(secondsplit);
+	    				  String key = smalltoken[smalltoken.length-1];
+	    				  //System.out.println("Last token =   "+ key);
+	    				  String ent = key+",";
+	    				  boolean entityexistflag =false;
+	    				// Iterating over keys only
+	    				  for (String entitykey : connectionList.keySet()) {
+	    					  //System.out.println("str = " + ent+"   key in connectionlist = "+ entitykey);
+	    					  if (entitykey.contains(ent)==true) 
+	    					  {
+	    						  entityexistflag=true;
+	    						//  System.out.println("Entity match found");
+	    						  //connectionList.put(ent,0);
+	    					  }	    				      
+	    				  }
+	    				  if(entityexistflag==false)
+	    				  {
+	    					  //System.out.println("Entity not found found, making a new entry for entity = "+ ent);
+	    					  ent = ent;//+"null";
+	    					  connectionList.put(ent,0);
+	    				  }
+	    			  }
+	    		  	}
+	    		 }
+	    	  }
+	    }
+	    catch(IOException e) {
+	      e.printStackTrace();
+	    }
+		
 	}
 
 	/*load entities*/
@@ -278,6 +381,13 @@ public class LabRecruitsRLEnvironment implements Environment {
 		
 		startTestServer();
 		
+		System.out.println("Starting training, memory clean interval and training session = "+memorywipeinterval+"  training = "+ testingenvironment);
+		/*only for testing agent*/
+		if(testingenvironment==true) {
+			this.connectionList=new HashMap<String, Integer>();
+			LoadConnectionList(labRecruitsLevel,labRecruitsLevelFolder);
+			printConnectionList();
+		}
 		/*for testing functional coverage*/
 		if(functionalCoverageFlag==true){
 			this.entityList = new HashMap<String, Integer>();
@@ -295,11 +405,11 @@ public class LabRecruitsRLEnvironment implements Environment {
 		labRecruitsAgentEnvironment = new LabRecruitsEnvironment(gameConfig);
 		labRecruitsAgentEnvironment.startSimulation();
 		
-		// create a test agent
+		// create passive test agent
 		testAgent = new LabRecruitsTestAgent(agentName) // matches the ID in the CSV file
 				. attachState(new BeliefState())
 				. attachEnvironment(labRecruitsAgentEnvironment);
-		
+
 		var dataCollector = new TestDataCollector();
 		testAgent.setTestDataCollector(dataCollector);
 		
@@ -308,15 +418,16 @@ public class LabRecruitsRLEnvironment implements Environment {
 		GoalStructure goal =  explore(); //getActionGoal(goalEntity, goalEntityType);
 		DPrint.ul("Starting Simulation : \n  Goal : "+goalEntity +"    "+goal.toString() +"   Entity type : "+goalEntityType+"  status : "+goal.getStatus());
 		doAction(goal, maxTicksPerAction);
-
+		
 		DPrint.ul ("========Getting current State from start agent Environment==================");
 		currentState = (LabRecruitsState) currentObservation();
-		DPrint.ul ("====Updating coverage percentage based on initial observation of the agent==================");
+		//DPrint.ul ("====Updating coverage percentage based on initial observation of the agent==================");
 		double rewardval= UpdateGoalList(currentState);   // update coverage goal for the first time
 		DPrint.ul ("Initial State (Agent's view): "+ currentState.toString());
 	}
 	
 	
+
 	public void stopAgentEnvironment() {
 		labRecruitsAgentEnvironment.close();
 		stopTestServer();
@@ -494,6 +605,8 @@ public class LabRecruitsRLEnvironment implements Environment {
 		currentState = (LabRecruitsState) currentObservation();  //update current state	after executing the chosen action
 		*/
 		boolean terminated = isFinal(currentState);
+		//doExplore();  // after executing an action the agent should explore to grasp the impact of the action before taking new observation
+		//currentState = (LabRecruitsState) currentObservation();  //update current state	after executing the chosen action
 		
 		if (testingenvironment==false) 
 		{
@@ -505,11 +618,11 @@ public class LabRecruitsRLEnvironment implements Environment {
 					System.out.println("Update cycle= "+updateCycles+  " Clearing agent's memeory");
 					clearAgentMemory();
 					System.out.println("Check after clearing memory, num of entity in memory = "+testAgent.getState().knownEntities().size());
-					doExplore();
+					//doExplore();
 				
 				}
 				System.out.println("In executeAction() - do an explore after executing action = "+ a.actionName());
-				//doExplore();  // after executing an action the agent should explore to grasp the impact of the action before taking new observation
+				doExplore();  // after executing an action the agent should explore to grasp the impact of the action before taking new observation
 				currentState = (LabRecruitsState) currentObservation();  //update current state	after executing the chosen action
 				terminated = isFinal(currentState);
 				
@@ -617,18 +730,22 @@ public class LabRecruitsRLEnvironment implements Environment {
 				}
 					
 				System.out.println("In executeAction() - do an explore after executing action = "+ a.actionName());
-				doExplore();  // after executing an action the agent should explore to grasp the impact of the action before taking new observation
+				if(exploreoptionOn ==true) // do an explore of the environment before making next observation
+					doExplore();  // after executing an action the agent should explore to grasp the impact of the action before taking new observation
+				
 				currentState = (LabRecruitsState) currentObservation();  //update current state	after executing the chosen action
 				terminated = isFinal(currentState);
 					
 				if (testingenvironment==true) {
-					lastReward =0;
+					//lastReward =getReward(oldState, currentState, action);
 					System.out.println("Testing environment reward = "+lastReward);
 					/*-------------For functional coverage calculation (for all RL algorithm)------------------------------------------*/
 					if(functionalCoverageFlag==true)  
 					{
 						double rewardfunc= UpdateGoalList(currentState);
+						UpdateConnectionCoverage((LabRecruitsState)oldState,currentState,action);
 					}
+					
 				}else {
 				lastReward = getReward(oldState, currentState, action);
 				}
@@ -677,11 +794,84 @@ public class LabRecruitsRLEnvironment implements Environment {
 
 	}
 
-	
 	private double GetGeneralReward() {
 		// TODO Auto-generated method stub
 		return 0;
 	}
+	
+	/*check for the update on the connection list*/
+	private void UpdateConnectionCoverage(LabRecruitsState oldState, LabRecruitsState currentState, LabRecruitsAction action) {
+		System.out.println("---------------Update connection coverage statistics--------------------------");
+		System.out.println("Old state = "+ oldState.toString());
+		System.out.println("CurrentState = "+currentState.toString());
+		System.out.println("Action = "+action.actionName());
+		String splitBy =",";
+		for (String entitykey : connectionList.keySet()) {
+			 String[] token = entitykey.split(splitBy);
+			// System.out.println("Token size = "+ token.length);
+			  if (token[0].contains(action.actionName())==true) 
+			  {
+				  if(connectionList.get(entitykey)==0)  // connection has not satisfied yet 
+				  {				  
+					 // System.out.println("Entity found : "+ action.actionName() + "  "+ entitykey);
+					  //String[] token = entitykey.split(splitBy);
+					  //System.out.println("Token size = "+ token.length);
+					  int entitystatuschangecount=0;
+					  //check for changes in state for each entity from old to the new state
+					  for (int i=0;i<token.length;i++)
+					  {
+						//  System.out.println("Chcek for entity = "+ token[i]);
+						  boolean entitychangeflag=false;
+						  entitychangeflag = isEntityStatusChanged(oldState,currentState,token[i]);
+						  if(entitychangeflag == true) {
+							  entitystatuschangecount++;
+						  }
+					  }
+					  
+					  //if both entity status is changed successfully, we can say this connection satisfy
+					  if(entitystatuschangecount == token.length)
+					  {
+						  //System.out.println("This connection is satisfied = "+entitykey);
+						  int freq =  connectionList.get(entitykey);
+						  freq=freq+1;
+						  //if (freq>1)
+							//  System.out.println("visited over 1");
+						  connectionList.put(entitykey,freq);					  
+					  }
+				  }
+			  }	    				      
+		  }
+	}//end of the function
+
+	/*check if an entity status is changed from old to current observation*/
+	private boolean isEntityStatusChanged(LabRecruitsState oldState, LabRecruitsState currentState, String entityname) {		
+		String oldentitystate =getentitystate(oldState.toString(), entityname);
+		String newentitystate=getentitystate(currentState.toString(), entityname);
+		System.out.println("old status = "+ oldentitystate+"  new status= "+newentitystate);
+		if(oldentitystate!=null && newentitystate!=null) 
+		{
+			if(oldentitystate.equals(newentitystate)==false)
+			{
+				System.out.println("Change in entity status");
+				return true;
+			}
+		}
+		System.out.println("No change in entity status");
+		return false;
+	}
+
+	private String getentitystate(String observationstate, String entityname) {
+		String splitBy =",";
+		String[] token = observationstate.split(splitBy);
+		for (int i=0;i<token.length;i++)
+		{
+			if(token[i].contains(entityname)) 
+			{
+				return token[i];
+			}
+		}
+		return null;
+	}//end of the function
 
 	private double UpdateGoalList(LabRecruitsState currentState2) {	
 		double rewardfuncCov=0;
@@ -732,6 +922,27 @@ public class LabRecruitsRLEnvironment implements Environment {
         return goal;
     }
 	
+	/*private static GoalStructure gotoEntityPosition(String entityId) {
+		float deltaSq =(float) (0.1*0.1) ;
+		Goal goal = 
+        	  goal(String.format("The agent is at: [%s]", entityId))
+        	  . toSolve((BeliefState belief) -> {
+        		  var e = (LabEntity) belief.worldmodel.getElement(entityId) ;
+        		  // bug .. .should be distsq:
+        		  // return e!=null && Vec3.dist(belief.worldmodel.getFloorPosition(), e.getFloorPosition()) < 0.35 ;
+        		  // System.out.print("entityinteracted: navigate to" + e);
+        		  return e!=null && Vec3.sub(belief.worldmodel().getFloorPosition(), e.getFloorPosition()).lengthSq() <= deltaSq ;
+        	    });
+        	  
+  
+        	  return goal.withTactic(
+             		 FIRSTof(//the tactic used to solve the goal
+                        TacticLib.navigateTo(entityId),//move to the goal position
+                        TacticLib.explore(), //explore if the goal position is unknown
+                        ABORT())) 
+             	  . lift();
+      }
+	*/
 	
 	/**
 	 * Make the agent explore the environment. 
@@ -836,7 +1047,7 @@ public class LabRecruitsRLEnvironment implements Environment {
 				
 		if (isFinal(state2)) {			
 			reward = 100;
-			//System.out.println("Action  = "+action.actionName()+"  Final State, reward = "+reward);
+			System.out.println("Action  = "+action.actionName()+"  Final State, reward = "+reward);
 		} else {			
 			switch(rewardtype) {  //enable either sparse or curiosityDriven reward 
 			case Sparse:	
@@ -916,7 +1127,7 @@ public class LabRecruitsRLEnvironment implements Environment {
 			}
 		else {
 			System.out.println("Finish -All entitity is covered at least once. 100% entity coverage");
-			printGoalEntities();		
+			printGoalEntities(); // print all the goal activities		
 			return true;
 		}
 	}
@@ -934,6 +1145,20 @@ public class LabRecruitsRLEnvironment implements Environment {
 			}
 		return coverageRatio;
 	}/*end of the function*/
+	
+	/*calculate coverage percentage for an episode*/
+	public double CalculateConnectionCoverage() {
+		double coverageRatio = 0;
+		System.out.println("End testing episode - Calculate connection coverage ");
+		printConnectionList();	
+		double countzero = Collections.frequency(connectionList.values(), 0);
+		double coveragecount =  connectionList.size() - countzero;
+		coverageRatio = (coveragecount/(double)connectionList.size())*100;
+		System.out.println("Connection coverage calculation - satisfied connection= " +coveragecount+"/ total connection =  "+connectionList.size()+"  Coverate percentage = "+ coverageRatio+"%");
+		return coverageRatio;
+	}/*end of the function*/
+	
+	
 	
 	/*calculate coverage percentage for an episode*/
 	public void CalculateGlobalCoverageAfterTraining() {
