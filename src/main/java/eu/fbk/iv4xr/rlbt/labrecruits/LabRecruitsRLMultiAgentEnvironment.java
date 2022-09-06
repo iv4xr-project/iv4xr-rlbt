@@ -648,7 +648,7 @@ public class LabRecruitsRLMultiAgentEnvironment implements Environment {
 		System.out.println("Active RL agent works now --- ");
 		System.out.println("Inside function executeAction()- action name : "+ a.actionName());
 		
-//		currentState = (LabRecruitsState) currentObservation();
+		currentState = (LabRecruitsState) currentObservation();
 //		System.out.println("Active agent- observation before receive" + currentState);
 		
 //		GoalStructure goalreceive=  receiveObservationShare();
