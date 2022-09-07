@@ -28,6 +28,7 @@ public class LRMultiAgentConfiguration extends Configuration{
 		parameters.put("labrecruits.testingsession", false);
 		parameters.put("labrecruits.memory_clean_interval_action", 2);
 		parameters.put("labrecruits.exploreEventOn", true);
+		parameters.put("labrecruits.actionOnlySwitch", false);
 	}
 	
 }
