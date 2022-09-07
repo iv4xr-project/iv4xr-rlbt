@@ -129,7 +129,7 @@ public class LabRecruitsRLMultiAgentEnvironment implements Environment {
 	private ArrayList<String> GlobalEntityList = null;
 	
 	private double FuncCovReward=5;     // reward for exploring a new state of an entity
-	
+	private boolean ActionOnlySwitch = true;
 	
 	public LabRecruitsRLMultiAgentEnvironment(LRMultiAgentConfiguration lrConfiguration, StateDistance stateDistance) {
 		maxTicksPerAction = (int)lrConfiguration.getParameterValue("labrecruits.max_ticks_per_action");
@@ -166,6 +166,7 @@ public class LabRecruitsRLMultiAgentEnvironment implements Environment {
 		testingenvironment = (Boolean) lrConfiguration.getParameterValue("labrecruits.testingsession");  // identify training or testing sesson
 		memorywipeinterval = (int) lrConfiguration.getParameterValue("labrecruits.memory_clean_interval_action");
 		exploreoptionOn = (Boolean) lrConfiguration.getParameterValue("labrecruits.exploreEventOn"); 
+		ActionOnlySwitch= (Boolean) lrConfiguration.getParameterValue("labrecruits.actionOnlySwitch");
 	}
 	
 	private RlbtRewardFunction getRewardFunction(SearchMode searchMode, StateDistance stateDistance) {
@@ -420,6 +421,12 @@ public class LabRecruitsRLMultiAgentEnvironment implements Environment {
 		startTestServer();
 		
 		System.out.println("Starting training, memory clean interval and training session = "+memorywipeinterval+"  training = "+ testingenvironment);
+		
+		/*set parameter for interactable entities. Now considering two options : consider only switches/buttons, consider both buttons/switches and doors as action*/
+		LabRecruitsActionType actiontype = new LabRecruitsActionType();
+		actiontype.setActionOnlySwitch(ActionOnlySwitch);
+		
+		
 		/*only for testing agent*/
 		/*if(testingenvironment==true) {
 			this.connectionList=new HashMap<String, Integer>();
@@ -496,6 +503,9 @@ public class LabRecruitsRLMultiAgentEnvironment implements Environment {
 		currentStatePassive = (LabRecruitsState) AgentCurrentObservation(testAgentPassive); // get observation
 		System.out.println("Passive agent state = "+ currentStatePassive.toString());
 		//LoadTestingEntityGoal(currentStatePassive);
+		
+		GoalStructure goalshareobj = shareObservation(testAgentPassive.getId(), testAgentActive.getId());
+		doAction(goalshareobj, maxTicksPerAction, testAgentPassive);
 				
 	}//end of the function
 	/**
@@ -635,9 +645,9 @@ public class LabRecruitsRLMultiAgentEnvironment implements Environment {
 		/*-----------------------------------------------------------------------
 		Passive agent -  do an explore, get a new observaiton of the environment and share it with the active agent
 		-------------------------------------------------------------------------*/
-		RunPassiveAgent();
-		GoalStructure goalshareobj = shareObservation(testAgentPassive.getId(), testAgentActive.getId());
-		doAction(goalshareobj, maxTicksPerAction, testAgentPassive);
+//		RunPassiveAgent();
+//		GoalStructure goalshareobj = shareObservation(testAgentPassive.getId(), testAgentActive.getId());
+//		doAction(goalshareobj, maxTicksPerAction, testAgentPassive);
 
 		/*-----------------------------------------------------------------------
 		Active RL agent -  
@@ -646,13 +656,13 @@ public class LabRecruitsRLMultiAgentEnvironment implements Environment {
 		System.out.println("Inside function executeAction()- action name : "+ a.actionName());
 		
 		currentState = (LabRecruitsState) currentObservation();
-		System.out.println("Active agent- observation before receive" + currentState);
+//		System.out.println("Active agent- observation before receive" + currentState);
 		
-		GoalStructure goalreceive=  receiveObservationShare();
-		doAction(goalreceive, maxTicksPerAction, testAgentActive);
+//		GoalStructure goalreceive=  receiveObservationShare();
+//		doAction(goalreceive, maxTicksPerAction, testAgentActive);
 		
-		currentState = (LabRecruitsState) currentObservation();
-		System.out.println("Active agent- observation after receive" + currentState);
+//		currentState = (LabRecruitsState) currentObservation();
+//		System.out.println("Active agent- observation after receive" + currentState);
 			
 		State oldState = currentState; // state before execution
 		System.out.println("Old state = "+ oldState);
@@ -670,6 +680,13 @@ public class LabRecruitsRLMultiAgentEnvironment implements Environment {
 		
 		if (subGoal!=null)
 		{
+			RunPassiveAgent();
+			GoalStructure goalreceive=  receiveObservationShare();
+			doAction(goalreceive, maxTicksPerAction, testAgentActive);
+			
+			
+			currentState = (LabRecruitsState) currentObservation();  //update current state	after executing the chosen action
+			
 			if (subGoal.getStatus().success()==true) 
 			{ // reward calculation and next state observation if only goal is successful
 				// clearing agents memory after nth interval before making an observation
@@ -684,7 +701,12 @@ public class LabRecruitsRLMultiAgentEnvironment implements Environment {
 				if(exploreoptionOn ==true) // do an explore of the environment before making next observation
 					doExplore(testAgentActive);  // after executing an action the agent should explore to grasp the impact of the action before taking new observation
 				
-				currentState = (LabRecruitsState) currentObservation();  //update current state	after executing the chosen action
+				//RunPassiveAgent();
+				//GoalStructure goalreceive=  receiveObservationShare();
+				//doAction(goalreceive, maxTicksPerAction, testAgentActive);
+				
+				
+				//currentState = (LabRecruitsState) currentObservation();  //update current state	after executing the chosen action
 				terminated = isFinal(currentState);
 					
 				if (testingenvironment==true) {
