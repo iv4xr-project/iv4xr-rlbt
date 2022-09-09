@@ -494,7 +494,7 @@ public class LabRecruitsRLMultiAgentEnvironment implements Environment {
 
 
 	public void RunPassiveAgent() {
-		clearAgentMemory(testAgentPassive);
+//		clearAgentMemory(testAgentPassive);
 		System.out.println("Passive agent works now --- ");
 		//passive agent will only explore the environment and take an observation after each exploration event
 		GoalStructure goal =  explore(); //getActionGoal(goalEntity, goalEntityType);
@@ -670,44 +670,46 @@ public class LabRecruitsRLMultiAgentEnvironment implements Environment {
 		LabRecruitsAction action = (LabRecruitsAction)a;  // this Action a should be mapped into a goal that the agent can execute
 		GoalStructure subGoal = getActionGoal(action.getActionId(), action.getInteractedEntity().type, testAgentActive);
 		
+		boolean terminated = false;
 		if (subGoal != null) {  // if action goal is not empty, execute action
 			doAction(subGoal, maxTicksPerAction, testAgentActive);
-		} else {
-			// TODO this means the agent cannot do anything, so let the current goal continue?
-		}
-
-		boolean terminated = isFinal(currentState); // check if the current state is terminal state
 		
-		if (subGoal!=null)
-		{
+			doExplore(testAgentActive);
+			currentState = (LabRecruitsState) currentObservation();
+			System.out.println("Current state before receive = " + currentState);
+//		boolean terminated = isFinal(currentState); // check if the current state is terminal state
+		
+//		if (subGoal!=null)
+//		{
 			RunPassiveAgent();
 			GoalStructure goalreceive=  receiveObservationShare();
 			doAction(goalreceive, maxTicksPerAction, testAgentActive);
 			
-			
 			currentState = (LabRecruitsState) currentObservation();  //update current state	after executing the chosen action
+			System.out.println("Current state after receive = " + currentState);
+			terminated = isFinal(currentState);
+			
+//			currentState = (LabRecruitsState) currentObservation();  //update current state	after executing the chosen action
 			
 			if (subGoal.getStatus().success()==true) 
 			{ // reward calculation and next state observation if only goal is successful
 				// clearing agents memory after nth interval before making an observation
-				if((updateCycles>0) && (updateCycles % memorywipeinterval)==0) 
-				{
-					System.out.println("Update cycle= "+updateCycles+  " Clearing agent's memeory");
-					clearAgentMemory(testAgentActive);
-					System.out.println("Check after clearing memory, num of entity in memory = "+testAgentActive.getState().knownEntities().size());
-					//doExplore();					
-				}
+//				if((updateCycles>0) && (updateCycles % memorywipeinterval)==0) 
+//				{
+//					System.out.println("Update cycle= "+updateCycles+  " Clearing agent's memeory");
+//					clearAgentMemory(testAgentActive);
+//					System.out.println("Check after clearing memory, num of entity in memory = "+testAgentActive.getState().knownEntities().size());
+//					//doExplore();					
+//				}
 					
-				if(exploreoptionOn ==true) // do an explore of the environment before making next observation
-					doExplore(testAgentActive);  // after executing an action the agent should explore to grasp the impact of the action before taking new observation
+//				if(exploreoptionOn ==true) // do an explore of the environment before making next observation
+//					doExplore(testAgentActive);  // after executing an action the agent should explore to grasp the impact of the action before taking new observation
 				
 				//RunPassiveAgent();
 				//GoalStructure goalreceive=  receiveObservationShare();
 				//doAction(goalreceive, maxTicksPerAction, testAgentActive);
 				
 				
-				//currentState = (LabRecruitsState) currentObservation();  //update current state	after executing the chosen action
-				terminated = isFinal(currentState);
 					
 				if (testingenvironment==true) {
 					//lastReward =getReward(oldState, currentState, action);
@@ -720,7 +722,7 @@ public class LabRecruitsRLMultiAgentEnvironment implements Environment {
 					}
 					
 				}else {
-				lastReward = getReward(oldState, currentState, action);
+					lastReward = getReward(oldState, currentState, action);
 				}
 				System.out.println("Action = "+ action.actionName()+  "executed successfully, reward = "+lastReward);
 			}
@@ -746,11 +748,13 @@ public class LabRecruitsRLMultiAgentEnvironment implements Environment {
 			//	AgentDeadFlag= true;	
 			//	DPrint.ul("STOP SIMULAITON - AGENT DIED = "+testAgentActive.getState().worldmodel().health );
 			//}
-		} // if goal is not empty
+//		} // if goal is not empty
 		/*----------------------------------------------------------------------------------------------------------*/
 		//DPrint.ul("Goal status :" + lastReward);
 		//DPrint.ul("Goal status :" + subGoal.getStatus().toString());
-		
+		}else {
+			lastReward = 0;
+		}
 		EnvironmentOutcome outcome = new EnvironmentOutcome(oldState, action, currentState, lastReward, terminated);
 		
 		DPrint.ul ("From: " + oldState.toString() + "\n To: " + currentState.toString() + 
