@@ -20,6 +20,7 @@ import java.util.Map;
 import java.util.Scanner;
 import java.util.Set;
 import java.util.StringTokenizer;
+import java.util.Map.Entry;
 
 import agents.LabRecruitsTestAgent;
 import agents.tactics.GoalLib;
@@ -27,6 +28,7 @@ import agents.tactics.TacticLib;
 import burlap.behavior.singleagent.learning.tdmethods.QLearningStateNode;
 import burlap.debugtools.DPrint;
 import burlap.mdp.core.action.Action;
+import burlap.mdp.core.oo.state.ObjectInstance;
 import burlap.mdp.core.state.State;
 import burlap.mdp.singleagent.environment.Environment;
 import burlap.mdp.singleagent.environment.EnvironmentOutcome;
@@ -471,8 +473,10 @@ public class LabRecruitsRLMultiAgentEnvironment implements Environment {
 			
 		// Both agent do an explore to start 
 		//Passive agent starts
-		GoalStructure goal =  explore(); //getActionGoal(goalEntity, goalEntityType);
-		doAction(goal, maxTicksPerAction, testAgentPassive);
+//		GoalStructure goal =  explore(); //getActionGoal(goalEntity, goalEntityType);
+//		doAction(goal, maxTicksPerAction, testAgentPassive);
+		doExplore(testAgentPassive);
+		
 		//currentState = (LabRecruitsState) currentObservation();
 		currentStatePassive = (LabRecruitsState) AgentCurrentObservation(testAgentPassive);
 	
@@ -497,9 +501,10 @@ public class LabRecruitsRLMultiAgentEnvironment implements Environment {
 //		clearAgentMemory(testAgentPassive);
 		System.out.println("Passive agent works now --- ");
 		//passive agent will only explore the environment and take an observation after each exploration event
-		GoalStructure goal =  explore(); //getActionGoal(goalEntity, goalEntityType);
-		doAction(goal, maxTicksPerAction, testAgentPassive);
-
+//		GoalStructure goal =  explore(); //getActionGoal(goalEntity, goalEntityType);
+//		doAction(goal, maxTicksPerAction, testAgentPassive);
+		doExplore(testAgentPassive);
+		
 		currentStatePassive = (LabRecruitsState) AgentCurrentObservation(testAgentPassive); // get observation
 		System.out.println("Passive agent state = "+ currentStatePassive.toString());
 		//LoadTestingEntityGoal(currentStatePassive);
@@ -557,9 +562,8 @@ public class LabRecruitsRLMultiAgentEnvironment implements Environment {
 	 */
 	private void clearAgentMemory (LabRecruitsTestAgent testAgent) {
 		//System.out.println("Clearing agent's memeory of old observations");
-		testAgent.getState().knownEntities().clear(); // clearing the agent's memory
-		//var surfaceNavGraph = testAgent.getState().pathfinder();
-		//surfaceNavGraph.wipeOutMemory();
+		testAgent.getState().worldmodel.elements.clear();
+		testAgent.getState().pathfinder().wipeOutMemory();
 	}
 	
 	
@@ -635,6 +639,10 @@ public class LabRecruitsRLMultiAgentEnvironment implements Environment {
 	/*explore the environment*/
 	private void doExplore(LabRecruitsTestAgent testAgent) {
 		DPrint.ul("--In doExplore()------START EXPLORATION ---------------------------------");
+		
+		// first clear the agent's memory, otherwise the explore will not have any meaningful effect
+		clearAgentMemory(testAgent);
+		
 		GoalStructure goal = explore();
 		doAction(goal, maxTicksPerAction, testAgent);
 		DPrint.ul("-------END EXPLORATION ---------------------------------");
@@ -918,11 +926,69 @@ public class LabRecruitsRLMultiAgentEnvironment implements Environment {
                 .toSolve((BeliefState belief) -> true);
 
         // make an observation and update agent
-        GoalStructure goal = g.withTactic(TacticLib.receiveObservationShare()).lift();
+        GoalStructure goal = g.withTactic(receiveDirectObservationShare()).lift();
 
         return goal;
     }
 	
+	/**
+     * This tactic cause the agent to receive an memory share if one is available and make an observation
+     * @return The tactic which will receive the memory share
+     */
+    public static Tactic receiveDirectObservationShare(){
+        return action("Receive map sharing")
+                . do1((BeliefState belief)-> {
+                	//get the  messages
+                	Message m = belief.messenger().retrieve(M -> M.getMsgName().equals("ObservationSharing")) ;
+                    while(m != null){
+                        //apply the memory share
+                    	LabWorldModel obs = (LabWorldModel) m.getArgs()[0] ;
+                    	System.out.println("Received observation: " + toString(obs));
+                    	if (obs.timestamp >= belief.worldmodel.timestamp) {
+                    		// Don't do this! It would take over the agent position of the new obs.
+                    		// belief.worldmodel.mergeNewObservation(obs) ;
+                    		// Do this instead:
+                    		for (WorldEntity e : obs.elements.values()) {
+                    			belief.worldmodel.updateEntity(e) ;
+                    		}
+                    	}
+                    	else {
+                    		belief.worldmodel.mergeOldObservation(obs) ;
+                    	}
+                    	belief.pathfinder().markAsSeen(obs.visibleNavigationNodes);
+                        m = belief.messenger().retrieve(M -> M.getMsgName().equals("ObservationSharing")) ;
+                    }
+                    //do an observation
+                    //LabWorldModel o = belief.env().observe(belief.id);
+                    //belief.updateBelief(o);
+                    return belief;
+                })
+                .on_((BeliefState S) -> S.messenger().has(M -> M.getMsgName().equals("ObservationSharing")))//check if there is a memory share available
+                .lift() ;
+    }
+	
+    
+    private static String toString(LabWorldModel model) {
+		StringBuffer buffer = new StringBuffer();
+		buffer.append("[");
+		for (WorldEntity e : model.elements.values()) {
+//			LabRecruitsEntityObject labEntityObject = (LabRecruitsEntityObject) entity;
+			
+			LabEntity entity = (LabEntity) e;
+			String property = "";
+			if (entity.type.equalsIgnoreCase(LabEntity.DOOR)) {
+				property += entity.getBooleanProperty("isOpen");
+			}else if (entity.type.equalsIgnoreCase(LabEntity.SWITCH)){
+				property += entity.getBooleanProperty("isOn");
+			}
+				
+			buffer.append(entity.id + " (" + property + ")" + ",");
+		}
+		buffer.deleteCharAt(buffer.length()-1);
+		buffer.append("]");
+		return buffer.toString();
+	}
+    
 	//receiveObservationShare
 	
 	/*private static GoalStructure gotoEntityPosition(String entityId) {
@@ -1009,7 +1075,8 @@ public class LabRecruitsRLMultiAgentEnvironment implements Environment {
                 . do1((BeliefState belief)-> {
                 	var obs = belief.env().observe(belief.id);
                 	// force wom update:
-                	belief.mergeNewObservationIntoWOM(obs) ;
+//                	belief.mergeNewObservationIntoWOM(obs) ;
+                	System.out.println("Sent observation: " + toString(obs));
                     Acknowledgement a = belief.messenger().send(id,0, Message.MsgCastType.SINGLECAST, targetId,"ObservationSharing",obs) ;
                     return belief;
                 }).lift();
