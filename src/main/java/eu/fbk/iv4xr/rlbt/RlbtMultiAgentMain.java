@@ -302,7 +302,7 @@ public class RlbtMultiAgentMain{
 	}
 
 /*=========================================================================================================================
- * 						Multi-Agent architecture (training methods)
+ * 						MultiAgent architecture (training methods)
  * =======================================================================================================================*/
 	private static List<Episode> executeMultiAgentTrainingOnLabRecruits() throws InterruptedException, FileNotFoundException {
 		
@@ -344,7 +344,7 @@ public class RlbtMultiAgentMain{
 		int maxActionsPerEpisode = (int)lrConfiguration.getParameterValue("labrecruits.max_actions_per_episode");
 		/*------------Training - start running episodes------------------------*/
 		labRecruitsRlMultiAgentEnv.startAgentEnvironment();
-		
+		numEpisodes=2;
 		for(int i = 0; i < numEpisodes; i++){			
 			labRecruitsRlMultiAgentEnv.resetStateMemory();   // reset state buffer at the beginning of an episode
 			long startTime = System.currentTimeMillis();
@@ -352,21 +352,20 @@ public class RlbtMultiAgentMain{
 			long estimatedTime = System.currentTimeMillis() - startTime;
 			System.out.println("Time for this episode  : "+estimatedTime);
 			
-			//double episodecov = labRecruitsRlMultiAgentEnv.CalculateEpisodeCoverage();  //calculate coverage after finishing an episode
+			double episodecov = labRecruitsRlMultiAgentEnv.CalculateEpisodeCoverage();  //calculate coverage after finishing an episode
 			//store time and coverage per episode
-			//episodeCoverage.add(episodecov);
+			episodeCoverage.add(episodecov);
 			episodeTime.add(estimatedTime);
 			
-			System.out.println("End of episode - Print goal entities explored by passive agent");
+			System.out.println("End of episode - Print goal entities explored by active agent");
 			labRecruitsRlMultiAgentEnv.printGoalEntities();
-			//labRecruitsRlMultiAgentEnv.GlobalCoveragePerEpisode();
+			System.out.println("Coverage stat till episode "+(i+1));
+			labRecruitsRlMultiAgentEnv.GlobalCoveragePerEpisode();
 			labRecruitsRlMultiAgentEnv.resetEnvironment();  //reset environment
-			
-			break;
 		}
 
-		/*
-		labRecruitsRlEnvironment.CalculateGlobalCoverageAfterTraining();
+		
+		labRecruitsRlMultiAgentEnv.CalculateGlobalCoverageAfterTraining();
 		//------------Save------------------------
 		//long estimatedTime = System.currentTimeMillis() - startTime;
 		//System.out.println("Time - Training : "+estimatedTime);
@@ -379,7 +378,7 @@ public class RlbtMultiAgentMain{
 				
 		String episodesBaseName = outputDir + File.separator + "episode";
 		SerializationUtil.serializeEpisodes(episodes, episodesBaseName );
-		*/
+		
 		labRecruitsRlMultiAgentEnv.stopAgentEnvironment();  /*stop RL agent environment*/
 		return episodes;
 	}
