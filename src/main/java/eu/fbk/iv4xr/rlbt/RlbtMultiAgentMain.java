@@ -344,7 +344,7 @@ public class RlbtMultiAgentMain{
 		int maxActionsPerEpisode = (int)lrConfiguration.getParameterValue("labrecruits.max_actions_per_episode");
 		/*------------Training - start running episodes------------------------*/
 		labRecruitsRlMultiAgentEnv.startAgentEnvironment();
-		numEpisodes=2;
+
 		for(int i = 0; i < numEpisodes; i++){			
 			labRecruitsRlMultiAgentEnv.resetStateMemory();   // reset state buffer at the beginning of an episode
 			long startTime = System.currentTimeMillis();
