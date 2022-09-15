@@ -82,9 +82,10 @@ public class RlbtMultiAgentMain{
 			double calculatedDecayVal = (double)(epsilonval/numEpisodes);
 			calculatedDecayVal=calculatedDecayVal/2;
 			burlapConfiguration.setParameterValue("burlap.qlearning.decayedepsilonstep", Double.toString(calculatedDecayVal));  // set calculated decayed value according to number of episodes
-			System.out.println("epsilon val ="+epsilonval+ "  decay = "+calculatedDecayVal);
+			System.out.println("Curiosity Driven Approach - epsilon val ="+epsilonval+ "  decay = "+calculatedDecayVal);
 		}
 		if (rewardtp.equalsIgnoreCase("Sparse")) {
+			System.out.println("Sparse RL");
 			burlapConfiguration.setParameterValue("burlap.qlearning.decayedepsilonstep", Double.toString(0));			
 		}
 
@@ -105,13 +106,13 @@ public class RlbtMultiAgentMain{
 		int maxActionsPerEpisode = (int)lrConfiguration.getParameterValue("labrecruits.max_actions_per_episode");
 		/*------------Training - start running episodes------------------------*/
 		labRecruitsRlEnvironment.startAgentEnvironment();
-		for(int i = 0; i < numEpisodes; i++){			
+		for(int i = 0; i < numEpisodes; i++){	
+			System.out.println("Episode = "+(i+1)+" Starting");
 			labRecruitsRlEnvironment.resetStateMemory();   // reset state buffer at the beginning of an episode
 			long startTime = System.currentTimeMillis();
 			episodes.add(agent.runLearningEpisode(labRecruitsRlEnvironment, maxActionsPerEpisode));
 			long estimatedTime = System.currentTimeMillis() - startTime;
-			System.out.println("Time for this episode  : "+estimatedTime);
-			
+			System.out.println("Episode = "+(i+1)+" Finished, Time required  : "+estimatedTime);
 			double episodecov = labRecruitsRlEnvironment.CalculateEpisodeCoverage();  /*calculate coverage after finishing an episode*/
 			/*store time and coverage per episode*/
 			episodeCoverage.add(episodecov);
@@ -145,7 +146,7 @@ public class RlbtMultiAgentMain{
 	 * @throws FileNotFoundException 
 	 */
 	private List<Episode> executeTraining (CommandLine line, Options options) throws FileNotFoundException, InterruptedException {
-		System.out.println("Single Agent architecture");
+		System.out.println("--------------------------Single Reinforcement Learning Agent architecture---------------------");
 		// check algorithm and execute corresponding method
 		String alg = (String)burlapConfiguration.getParameterValue("burlap.algorithm");
 		if (alg.equalsIgnoreCase(BurlapAlgorithm.QLearning.toString())) {
@@ -318,9 +319,10 @@ public class RlbtMultiAgentMain{
 			double calculatedDecayVal = (double)(epsilonval/numEpisodes);
 			calculatedDecayVal=calculatedDecayVal/2;
 			burlapConfiguration.setParameterValue("burlap.qlearning.decayedepsilonstep", Double.toString(calculatedDecayVal));  // set calculated decayed value according to number of episodes
-			System.out.println("epsilon val ="+epsilonval+ "  decay = "+calculatedDecayVal);
+			System.out.println("Curiosity Driven approach - epsilon val ="+epsilonval+ "  decay = "+calculatedDecayVal);
 		}
 		if (rewardtp.equalsIgnoreCase("Sparse")) {
+			System.out.println("Sparse RL");
 			burlapConfiguration.setParameterValue("burlap.qlearning.decayedepsilonstep", Double.toString(0));			
 		}
 
@@ -344,13 +346,13 @@ public class RlbtMultiAgentMain{
 		int maxActionsPerEpisode = (int)lrConfiguration.getParameterValue("labrecruits.max_actions_per_episode");
 		/*------------Training - start running episodes------------------------*/
 		labRecruitsRlMultiAgentEnv.startAgentEnvironment();
-
-		for(int i = 0; i < numEpisodes; i++){			
+		for(int i = 0; i < numEpisodes; i++){	
+			System.out.println("Starting Episode = "+(i+1));
 			labRecruitsRlMultiAgentEnv.resetStateMemory();   // reset state buffer at the beginning of an episode
 			long startTime = System.currentTimeMillis();
 			episodes.add(agent.runLearningEpisode(labRecruitsRlMultiAgentEnv, maxActionsPerEpisode));
 			long estimatedTime = System.currentTimeMillis() - startTime;
-			System.out.println("Time for this episode  : "+estimatedTime);
+			System.out.println("Finished Episode = "+(i+1)+". Time required  : "+estimatedTime);
 			
 			double episodecov = labRecruitsRlMultiAgentEnv.CalculateEpisodeCoverage();  //calculate coverage after finishing an episode
 			//store time and coverage per episode
@@ -391,7 +393,8 @@ public class RlbtMultiAgentMain{
 	 * @throws FileNotFoundException 
 	 */
 	private List<Episode> executeMultiAgentTraining (CommandLine line, Options options) throws FileNotFoundException, InterruptedException {
-		System.out.println("MultiAgent architecture");
+		System.out.println("=========================================================================================");
+		System.out.println("----------------MultiAgent Reinforcement Learning Architecture----------------");
 		// check algorithm and execute corresponding method
 		String alg = (String)burlapConfiguration.getParameterValue("burlap.algorithm");
 		if (alg.equalsIgnoreCase(BurlapAlgorithm.QLearning.toString())) {
