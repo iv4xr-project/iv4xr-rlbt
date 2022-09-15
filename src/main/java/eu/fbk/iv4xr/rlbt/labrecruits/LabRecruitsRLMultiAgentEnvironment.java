@@ -215,7 +215,7 @@ public class LabRecruitsRLMultiAgentEnvironment implements Environment {
 	}
 	
 	public void printGoalEntities() {
-		System.out.println("Printing Goal Entity List - functional coverage testing, total entity = "+ entityList.size());
+		System.out.println("Goal - Entity List to cover, total entity = "+ entityList.size());
 		for (String k : entityList.keySet()) {
 			System.out.println("Entity name = "+k+"   visit Frequency= "+entityList.get(k));
 		}	
@@ -335,7 +335,7 @@ public class LabRecruitsRLMultiAgentEnvironment implements Environment {
 	public void LoadTestingEntityGoal(LabRecruitsState obsstate) {		
 		for (String k : obsstate.getObjectsMap().keySet()) {
 			LabRecruitsEntityObject entity = (LabRecruitsEntityObject) obsstate.getObjectsMap().get(k);
-			System.out.println("Entity observed= "+ entity.toString());
+			//System.out.println("Entity observed= "+ entity.toString());
 			//System.out.println("Last token =   "+ key);
 			  String ent = entity.toString()+" (false)";
 			  if (entityList.containsKey(ent)==false) {
@@ -415,14 +415,13 @@ public class LabRecruitsRLMultiAgentEnvironment implements Environment {
 	/*start RL environment*/
 	public void startAgentEnvironment () throws InterruptedException {
 		System.out.println("Level name : "+labRecruitsLevel);
+		System.out.println("=========================================================================================");
 		AgentDeadFlag= false;
 		lastReward = 0;
 		updateCycles = 0;
 		//this.healthScore=100;
-		
 		startTestServer();
-		
-		System.out.println("Starting training, memory clean interval and training session = "+memorywipeinterval+"  training = "+ testingenvironment);
+		//System.out.println("Starting training, memory clean interval and training session = "+memorywipeinterval+"  training = "+ testingenvironment);
 		
 		/*set parameter for interactable entities. Now considering two options : consider only switches/buttons, consider both buttons/switches and doors as action*/
 		LabRecruitsActionType actiontype = new LabRecruitsActionType();
@@ -470,23 +469,19 @@ public class LabRecruitsRLMultiAgentEnvironment implements Environment {
 				. registerTo(communication)
 				. setTestDataCollector(new TestDataCollector());
 		
-			
+		System.out.println("=========================start both agents with an explore=====================================");
 		// Both agent do an explore to start 
 		//Passive agent starts
-//		GoalStructure goal =  explore(); //getActionGoal(goalEntity, goalEntityType);
-//		doAction(goal, maxTicksPerAction, testAgentPassive);
-		doExplore(testAgentPassive);
-		
-		//currentState = (LabRecruitsState) currentObservation();
+		GoalStructure goal =  explore(); //getActionGoal(goalEntity, goalEntityType);
+		doAction(goal, maxTicksPerAction, testAgentPassive);
 		currentStatePassive = (LabRecruitsState) AgentCurrentObservation(testAgentPassive);
-	
-		//Active agent starts
-		GoalStructure goalactive =  explore(); //getActionGoal(goalEntity, goalEntityType);
-		doAction(goalactive, maxTicksPerAction, testAgentActive);		
 		
+		
+		GoalStructure goalactive =  explore(); //getActionGoal(goalEntity, goalEntityType);
+		doAction(goalactive, maxTicksPerAction, testAgentActive);
 		currentStateActive = (LabRecruitsState) AgentCurrentObservation(testAgentActive);
 		double rewardval= UpdateGoalList(currentStateActive);   // update coverage goal for the first time
-		
+		System.out.println("=========================Initial Observation of both agents=====================================");
 		DPrint.ul ("Passive agent  - Initial observation state: "+ currentStatePassive.toString());
 		DPrint.ul ("Active agent - Initial observation state: "+ currentStateActive.toString());
 	}
@@ -499,7 +494,7 @@ public class LabRecruitsRLMultiAgentEnvironment implements Environment {
 
 	public void RunPassiveAgent() {
 //		clearAgentMemory(testAgentPassive);
-		System.out.println("Passive agent works now --- ");
+		System.out.println("----------Passive agent is working now --------------- ");
 		//passive agent will only explore the environment and take an observation after each exploration event
 //		GoalStructure goal =  explore(); //getActionGoal(goalEntity, goalEntityType);
 //		doAction(goal, maxTicksPerAction, testAgentPassive);
@@ -596,9 +591,9 @@ public class LabRecruitsRLMultiAgentEnvironment implements Environment {
 			}
 		}
 		if(currentState.numObjects()==0)
-				System.out.println("Observation empty , num obj = "+currentState.numObjects());
+				System.out.println(testAgent.getId()+ " Warning : Empty Observation , num obj in current observation= "+currentState.numObjects());
 		
-		DPrint.ul("Agent name : "+ testAgent.toString()+"   ,Observation state: "+ currentState.toString());
+		//DPrint.ul("Agent name : "+ testAgent.toString()+"   ,Observation state: "+ currentState.toString());
 		return currentState;
 	}
 	
@@ -624,8 +619,8 @@ public class LabRecruitsRLMultiAgentEnvironment implements Environment {
 			}
 		}
 		if(currentState.numObjects()==0) {
-		System.out.println("Observation empty , num obj = "+currentState.numObjects());}
-		DPrint.ul("Current Observation state of Agent after explore :"+ currentState.toString() );
+		System.out.println("Warning : Empty Observation , num obj in current observation = "+currentState.numObjects());}
+		//DPrint.ul("Current Observation state :"+ currentState.toString() );
 		return currentState;
 	}
 
@@ -638,30 +633,23 @@ public class LabRecruitsRLMultiAgentEnvironment implements Environment {
 	
 	/*explore the environment*/
 	private void doExplore(LabRecruitsTestAgent testAgent) {
-		DPrint.ul("--In doExplore()------START EXPLORATION ---------------------------------");
+		DPrint.ul("-----------------START EXPLORATION--"+ testAgent.getId()+ "-------In doExplore()-----");
 		
 		// first clear the agent's memory, otherwise the explore will not have any meaningful effect
 		clearAgentMemory(testAgent);
 		
 		GoalStructure goal = explore();
 		doAction(goal, maxTicksPerAction, testAgent);
-		DPrint.ul("-------END EXPLORATION ---------------------------------");
+		DPrint.ul("-------END EXPLORATION ---------------------------------\n");
 	}
 		
 	@Override
 	public EnvironmentOutcome executeAction(Action a) {
 		/*-----------------------------------------------------------------------
-		Passive agent -  do an explore, get a new observaiton of the environment and share it with the active agent
+		Active RL agent is working
 		-------------------------------------------------------------------------*/
-//		RunPassiveAgent();
-//		GoalStructure goalshareobj = shareObservation(testAgentPassive.getId(), testAgentActive.getId());
-//		doAction(goalshareobj, maxTicksPerAction, testAgentPassive);
-
-		/*-----------------------------------------------------------------------
-		Active RL agent -  
-		-------------------------------------------------------------------------*/
-		System.out.println("Active RL agent works now --- ");
-		System.out.println("Inside function executeAction()- action name : "+ a.actionName());
+		System.out.println("Active RL agent works now, id= "+testAgentActive.getId() );
+		//System.out.println("Inside function executeAction()- action name : "+ a.actionName());
 		
 		currentState = (LabRecruitsState) currentObservation();
 //		System.out.println("Active agent- observation before receive" + currentState);
@@ -684,7 +672,7 @@ public class LabRecruitsRLMultiAgentEnvironment implements Environment {
 		
 			doExplore(testAgentActive);
 			currentState = (LabRecruitsState) currentObservation();
-			System.out.println("Current state before receive = " + currentState);
+			System.out.println(testAgentActive.getId()+"  - Current state before receive = " + currentState);
 //		boolean terminated = isFinal(currentState); // check if the current state is terminal state
 		
 //		if (subGoal!=null)
@@ -694,7 +682,12 @@ public class LabRecruitsRLMultiAgentEnvironment implements Environment {
 			doAction(goalreceive, maxTicksPerAction, testAgentActive);
 			
 			currentState = (LabRecruitsState) currentObservation();  //update current state	after executing the chosen action
-			System.out.println("Current state after receive = " + currentState);
+			
+			if(currentState.numObjects()==0) {
+				System.out.println("Current observation is empty, restoring the last state");				
+				currentState= (LabRecruitsState) oldState;
+			}
+			System.out.println(testAgentActive.getId()+ " - Current state after receive = " + currentState);
 			terminated = isFinal(currentState);
 			
 //			currentState = (LabRecruitsState) currentObservation();  //update current state	after executing the chosen action
@@ -721,7 +714,7 @@ public class LabRecruitsRLMultiAgentEnvironment implements Environment {
 					
 				if (testingenvironment==true) {
 					//lastReward =getReward(oldState, currentState, action);
-					System.out.println("Testing environment reward = "+lastReward);
+					System.out.println("Testing environment - reward = "+lastReward);
 					/*-------------For functional coverage calculation (for all RL algorithm)------------------------------------------*/
 					if(functionalCoverageFlag==true)  
 					{
@@ -732,12 +725,12 @@ public class LabRecruitsRLMultiAgentEnvironment implements Environment {
 				}else {
 					lastReward = getReward(oldState, currentState, action);
 				}
-				System.out.println("Action = "+ action.actionName()+  "executed successfully, reward = "+lastReward);
+				System.out.println("Action = "+ action.actionName()+  " ,executed successfully, reward = "+lastReward);
 			}
 			else 
 			{
 				lastReward = 0;  
-				System.out.println("Action =  "+ action.actionName()+  "execution failure/inprogress, no reward = "+ lastReward);
+				System.out.println("Action =  "+ action.actionName()+  " ,execution failure/inprogress, no reward = "+ lastReward);
 			}
 		
 			/*------------Penalty for health loss and death- applicable to all kind of RL algorithm*/
@@ -830,16 +823,16 @@ public class LabRecruitsRLMultiAgentEnvironment implements Environment {
 	private boolean isEntityStatusChanged(LabRecruitsState oldState, LabRecruitsState currentState, String entityname) {		
 		String oldentitystate =getentitystate(oldState.toString(), entityname);
 		String newentitystate=getentitystate(currentState.toString(), entityname);
-		System.out.println("old status = "+ oldentitystate+"  new status= "+newentitystate);
+		//System.out.println("old status = "+ oldentitystate+"  new status= "+newentitystate);
 		if(oldentitystate!=null && newentitystate!=null) 
 		{
 			if(oldentitystate.equals(newentitystate)==false)
 			{
-				System.out.println("Change in entity status");
+			//	System.out.println("Change in entity status");
 				return true;
 			}
 		}
-		System.out.println("No change in entity status");
+		//System.out.println("No change in entity status");
 		return false;
 	}
 
@@ -869,7 +862,7 @@ public class LabRecruitsRLMultiAgentEnvironment implements Environment {
 	    		 int freq= entityList.get(entitystr);
 	    		 freq =freq+1;
 	    		 if(freq==1) {   // a new state of this entity is observed, the agent is obtained small reward. This will encourage him to explore new states of entities
-	    			 System.out.println("In UpdateGoalList - getting small reward for observing a new entity state: "+ entitystr);
+	    			// System.out.println("In UpdateGoalList - getting small reward for observing a new entity state: "+ entitystr);
 	    			 rewardfuncCov += 1;//FuncCovReward; // 1 for observing a new state of an entity
 	    		 }
 	    		 entityList.put(entitystr, freq);  // update frequency
@@ -1023,10 +1016,12 @@ public class LabRecruitsRLMultiAgentEnvironment implements Environment {
 	 * @return
 	 */
 	private static GoalStructure explore() {
+		//System.out.println("-----------------------------------------------------------------------------");
 		GoalStructure goal = goal("explore")
 			       .toSolve((BeliefState belief) -> false)
 			       .withTactic(FIRSTof(TacticLib.explore(), ABORT()))
 			       .lift();
+		//System.out.println("-----------------------------------------------------------------------------");
         return goal;
     }
 
@@ -1038,7 +1033,8 @@ public class LabRecruitsRLMultiAgentEnvironment implements Environment {
 	 * @param goal
 	 */
 	private void doAction (GoalStructure goal, int tickbugdet, LabRecruitsTestAgent testAgent) {
-		System.out.println("In doAction :  tickbudget : "+ tickbugdet);
+		//System.out.println("-----------------------------------------------------------------------------");
+		System.out.println("--------------"+testAgent.getId() + "---------In doAction()-----------tickbudget : "+ tickbugdet);
 		testAgent.setGoal(goal);
 		int maxTicks =tickbugdet;// maxTicksPerAction;	// let the agent run until the current goal is either succeeds or fails?!
 		int tickCounter = 0;
@@ -1050,10 +1046,11 @@ public class LabRecruitsRLMultiAgentEnvironment implements Environment {
 				e.printStackTrace();
 			}
 			testAgent.update();
-			DPrint.ul("*** STEP :" + testAgent.getState().worldmodel.timestamp + ", "
-		               + testAgent.getState().id + " @" + testAgent.getState().worldmodel.position) ;
+		//	DPrint.ul("*** STEP :" + testAgent.getState().worldmodel.timestamp + ", "
+		  //             + testAgent.getState().id + " @" + testAgent.getState().worldmodel.position) ;
 			tickCounter++;
 		}
+		//System.out.println("-----------------------------------------------------------------------------");
 	}
 	
 	@Override
@@ -1063,9 +1060,10 @@ public class LabRecruitsRLMultiAgentEnvironment implements Environment {
 
 	@Override
 	public boolean isInTerminalState() {
+		System.out.println("Check if current possition is the goal position");
 		boolean isFinal = isFinal(currentState) || updateCycles >= MAX_CYCLES || AgentDeadFlag==true;
 		if (isFinal) {
-			System.out.println("Finished Episode: " + currentEpisode);
+			System.out.println("Achieve goal, Ending episode");
 		}
 		return isFinal;
 	}
@@ -1128,7 +1126,7 @@ public class LabRecruitsRLMultiAgentEnvironment implements Environment {
 				
 		if (isFinal(state2)) {			
 			reward = 100;
-			System.out.println("Action  = "+action.actionName()+"  Final State, reward = "+reward);
+			System.out.println("Action  = "+action.actionName()+"  this is Final State, reward = "+reward);
 		} else {			
 			switch(rewardtype) {  //enable either sparse or curiosityDriven reward 
 			case Sparse:	
@@ -1173,7 +1171,7 @@ public class LabRecruitsRLMultiAgentEnvironment implements Environment {
 		case CoverageOriented:
 			CoverageOrientedRewardFunction rFunction = (CoverageOrientedRewardFunction)rewardFunction;
 			if(functionalCoverageFlag==true) {
-				System.out.println("check IsFinal() - Functional coverage testing report till now");
+				//System.out.println("check IsFinal() - Functional coverage testing report till now");
 				if(entityList.size()>0 && HasAllGoalSatisfied()==true)
 				{
 					System.out.println("Reached Final state : all entity covered");
@@ -1197,13 +1195,13 @@ public class LabRecruitsRLMultiAgentEnvironment implements Environment {
 
 	/*check for functional coverage  - if all the goal listed at the begining are satisfied*/
 	private boolean HasAllGoalSatisfied() { // if no 0 frequency value exists, meaning every entity has explored at least once
-		System.out.println("entity list size = "+entityList.size());
+		//System.out.println("entity list size = "+entityList.size());
 		if(entityList.containsValue(0)) {
 			//printGoalEntities();
 			double countzero = Collections.frequency(entityList.values(), 0);
 			double coveragecount =  entityList.size() - countzero;
 			double coverageRatio = (coveragecount/(double)entityList.size())*100;
-			System.out.println("Not all states are visited, Visited entity states " +coveragecount+" out of "+entityList.size()+" entity states, Coverate percentage = "+ coverageRatio+"%");
+			System.out.println("Not all states are visited, Visited entity states " +coveragecount+" out of "+entityList.size()+" entity states, Coverage percentage = "+ coverageRatio+"%");
 			return false;
 			}
 		else {
@@ -1215,14 +1213,14 @@ public class LabRecruitsRLMultiAgentEnvironment implements Environment {
 	
 	/*calculate coverage percentage for an episode*/
 	public double CalculateEpisodeCoverage() {
+		System.out.println("Calculate Episode coverage ");
 		double coverageRatio = 0;
-		if (functionalCoverageFlag==true) {
-			System.out.println("End episode - Calculate coverage ");
+		if (functionalCoverageFlag==true) {			
 			printGoalEntities();	
 			double countzero = Collections.frequency(entityList.values(), 0);
 			double coveragecount =  entityList.size() - countzero;
 			coverageRatio = (coveragecount/(double)entityList.size())*100;
-			System.out.println("Coverage calculation - Visited entity states " +coveragecount+" out of "+entityList.size()+" entity states, Coverate percentage = "+ coverageRatio+"%");
+			System.out.println("Episode Coverage calculation - Visited entity states " +coveragecount+" out of "+entityList.size()+" entity states, Coverate percentage = "+ coverageRatio+"%");
 			}
 		return coverageRatio;
 	}/*end of the function*/
@@ -1244,7 +1242,7 @@ public class LabRecruitsRLMultiAgentEnvironment implements Environment {
 	/*calculate coverage percentage for an episode*/
 	public void CalculateGlobalCoverageAfterTraining() {
 		double coverageRatio = 0;
-		System.out.println("End of training episodes - Calculate coverage ");
+		System.out.println("End of training session - Calculate coverage ");
 		System.out.println("Global coverage list, total entity = "+ GlobalEntityList.size());
 		System.out.println("----------------------Global entry list - entries visited by agent during training -----------");
 		for(int i = 0; i < GlobalEntityList.size(); i++) {   
