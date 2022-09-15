@@ -56,11 +56,11 @@ public class LabRecruitsActionType implements ActionType, Serializable {
 			
 			WorldEntity entity = (WorldEntity) labEntityObject.get(name);
 			//System.out.println("ID & TYPE = "+ entity.id+"  "+ entity.type);
-			System.out.println("Action type = Switch");
+			//System.out.println("Action type = Switch");
 			if (ActionOnlySwitch== true) {
 				if(entity.type == "Switch")   // considering only the switch/button interaction as action
 				{
-					System.out.println("Only switch as action");
+					//System.out.println("Only switch as action");
 					LabRecruitsAction labRecruitsAction = new LabRecruitsAction(entity.id);
 					labRecruitsAction.setInteractedEntity(entity);
 					actions.add(labRecruitsAction);
