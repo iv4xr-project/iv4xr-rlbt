@@ -3,10 +3,13 @@
  */
 package eu.fbk.iv4xr.rlbt.labrecruits;
 
-import static nl.uu.cs.aplib.AplibEDSL.*;
+import static nl.uu.cs.aplib.AplibEDSL.ABORT;
+import static nl.uu.cs.aplib.AplibEDSL.FIRSTof;
+import static nl.uu.cs.aplib.AplibEDSL.SEQ;
+import static nl.uu.cs.aplib.AplibEDSL.action;
+import static nl.uu.cs.aplib.AplibEDSL.goal;
 
 import java.io.BufferedReader;
-import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.FileReader;
 import java.io.IOException;
@@ -14,45 +17,34 @@ import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
-import java.util.Map;
-import java.util.Scanner;
-import java.util.Set;
 import java.util.StringTokenizer;
-import java.util.Map.Entry;
 
 import agents.LabRecruitsTestAgent;
 import agents.tactics.GoalLib;
-import agents.tactics.TacticLib;
-import burlap.behavior.singleagent.learning.tdmethods.QLearningStateNode;
+//import agents.tactics.TacticLib;
 import burlap.debugtools.DPrint;
 import burlap.mdp.core.action.Action;
-import burlap.mdp.core.oo.state.ObjectInstance;
 import burlap.mdp.core.state.State;
 import burlap.mdp.singleagent.environment.Environment;
 import burlap.mdp.singleagent.environment.EnvironmentOutcome;
-import burlap.statehashing.HashableState;
 import environments.LabRecruitsConfig;
 import environments.LabRecruitsEnvironment;
 import eu.fbk.iv4xr.rlbt.RlbtMain.RewardType;
 import eu.fbk.iv4xr.rlbt.RlbtMain.SearchMode;
-import eu.fbk.iv4xr.rlbt.configuration.LRConfiguration;
 import eu.fbk.iv4xr.rlbt.configuration.LRMultiAgentConfiguration;
 import eu.fbk.iv4xr.rlbt.distance.StateDistance;
 import eu.fbk.iv4xr.rlbt.labrecruits.rewardfunctions.CoverageOrientedRewardFunction;
 import eu.fbk.iv4xr.rlbt.labrecruits.rewardfunctions.GoalOrientedRewardFunction;
 import eu.fbk.iv4xr.rlbt.rewardfunction.RlbtRewardFunction;
-import eu.iv4xr.framework.mainConcepts.TestAgent;
+import eu.fbk.iv4xr.rlbt.utils.TacticLib;
 import eu.iv4xr.framework.mainConcepts.TestDataCollector;
 import eu.iv4xr.framework.mainConcepts.WorldEntity;
-import eu.iv4xr.framework.spatial.Vec3;
 import game.LabRecruitsTestServer;
 import game.Platform;
 import nl.uu.cs.aplib.mainConcepts.Goal;
 import nl.uu.cs.aplib.mainConcepts.GoalStructure;
 import nl.uu.cs.aplib.mainConcepts.Tactic;
-import nl.uu.cs.aplib.mainConcepts.Tactic.PrimitiveTactic;
 import nl.uu.cs.aplib.multiAgentSupport.Acknowledgement;
 import nl.uu.cs.aplib.multiAgentSupport.ComNode;
 import nl.uu.cs.aplib.multiAgentSupport.Message;
@@ -908,7 +900,7 @@ public class LabRecruitsRLMultiAgentEnvironment implements Environment {
                 .toSolve((BeliefState belief) -> true);
 
         // make an observation and update agent
-        GoalStructure goal = g.withTactic(shareObservationToSingleAgent(agentid, targetagentid)).lift();
+        GoalStructure goal = g.withTactic(TacticLib.shareObservationToSingleAgent(agentid, targetagentid)).lift();
 
         return goal;
     }
@@ -919,68 +911,12 @@ public class LabRecruitsRLMultiAgentEnvironment implements Environment {
                 .toSolve((BeliefState belief) -> true);
 
         // make an observation and update agent
-        GoalStructure goal = g.withTactic(receiveDirectObservationShare()).lift();
+        GoalStructure goal = g.withTactic(TacticLib.receiveDirectObservationShare()).lift();
 
         return goal;
     }
 	
-	/**
-     * This tactic cause the agent to receive an memory share if one is available and make an observation
-     * @return The tactic which will receive the memory share
-     */
-    public static Tactic receiveDirectObservationShare(){
-        return action("Receive map sharing")
-                . do1((BeliefState belief)-> {
-                	//get the  messages
-                	Message m = belief.messenger().retrieve(M -> M.getMsgName().equals("ObservationSharing")) ;
-                    while(m != null){
-                        //apply the memory share
-                    	LabWorldModel obs = (LabWorldModel) m.getArgs()[0] ;
-                    	System.out.println("Received observation: " + toString(obs));
-                    	if (obs.timestamp >= belief.worldmodel.timestamp) {
-                    		// Don't do this! It would take over the agent position of the new obs.
-                    		// belief.worldmodel.mergeNewObservation(obs) ;
-                    		// Do this instead:
-                    		for (WorldEntity e : obs.elements.values()) {
-                    			belief.worldmodel.updateEntity(e) ;
-                    		}
-                    	}
-                    	else {
-                    		belief.worldmodel.mergeOldObservation(obs) ;
-                    	}
-                    	belief.pathfinder().markAsSeen(obs.visibleNavigationNodes);
-                        m = belief.messenger().retrieve(M -> M.getMsgName().equals("ObservationSharing")) ;
-                    }
-                    //do an observation
-                    //LabWorldModel o = belief.env().observe(belief.id);
-                    //belief.updateBelief(o);
-                    return belief;
-                })
-                .on_((BeliefState S) -> S.messenger().has(M -> M.getMsgName().equals("ObservationSharing")))//check if there is a memory share available
-                .lift() ;
-    }
-	
     
-    private static String toString(LabWorldModel model) {
-		StringBuffer buffer = new StringBuffer();
-		buffer.append("[");
-		for (WorldEntity e : model.elements.values()) {
-//			LabRecruitsEntityObject labEntityObject = (LabRecruitsEntityObject) entity;
-			
-			LabEntity entity = (LabEntity) e;
-			String property = "";
-			if (entity.type.equalsIgnoreCase(LabEntity.DOOR)) {
-				property += entity.getBooleanProperty("isOpen");
-			}else if (entity.type.equalsIgnoreCase(LabEntity.SWITCH)){
-				property += entity.getBooleanProperty("isOn");
-			}
-				
-			buffer.append(entity.id + " (" + property + ")" + ",");
-		}
-		buffer.deleteCharAt(buffer.length()-1);
-		buffer.append("]");
-		return buffer.toString();
-	}
     
 	//receiveObservationShare
 	
@@ -1068,17 +1004,6 @@ public class LabRecruitsRLMultiAgentEnvironment implements Environment {
 		return isFinal;
 	}
 	
-    public static Tactic shareObservationToSingleAgent(String id, String targetId){
-        return action("Share map to another agent")
-                . do1((BeliefState belief)-> {
-                	var obs = belief.env().observe(belief.id);
-                	// force wom update:
-//                	belief.mergeNewObservationIntoWOM(obs) ;
-                	System.out.println("Sent observation: " + toString(obs));
-                    Acknowledgement a = belief.messenger().send(id,0, Message.MsgCastType.SINGLECAST, targetId,"ObservationSharing",obs) ;
-                    return belief;
-                }).lift();
-    }
 
 	@Override
 	public void resetEnvironment() {
