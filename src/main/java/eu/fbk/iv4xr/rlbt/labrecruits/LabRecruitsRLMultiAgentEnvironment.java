@@ -21,7 +21,7 @@ import java.util.List;
 import java.util.StringTokenizer;
 
 import agents.LabRecruitsTestAgent;
-import agents.tactics.GoalLib;
+//import agents.tactics.GoalLib;
 //import agents.tactics.TacticLib;
 import burlap.debugtools.DPrint;
 import burlap.mdp.core.action.Action;
@@ -38,6 +38,7 @@ import eu.fbk.iv4xr.rlbt.labrecruits.rewardfunctions.CoverageOrientedRewardFunct
 import eu.fbk.iv4xr.rlbt.labrecruits.rewardfunctions.GoalOrientedRewardFunction;
 import eu.fbk.iv4xr.rlbt.rewardfunction.RlbtRewardFunction;
 import eu.fbk.iv4xr.rlbt.utils.TacticLib;
+import eu.fbk.iv4xr.rlbt.utils.GoalLib;
 import eu.iv4xr.framework.mainConcepts.TestDataCollector;
 import eu.iv4xr.framework.mainConcepts.WorldEntity;
 import game.LabRecruitsTestServer;
@@ -641,20 +642,12 @@ public class LabRecruitsRLMultiAgentEnvironment implements Environment {
 		Active RL agent is working
 		-------------------------------------------------------------------------*/
 		System.out.println("Active RL agent works now, id= "+testAgentActive.getId() );
-		//System.out.println("Inside function executeAction()- action name : "+ a.actionName());
 		
 		currentState = (LabRecruitsState) currentObservation();
-//		System.out.println("Active agent- observation before receive" + currentState);
-		
-//		GoalStructure goalreceive=  receiveObservationShare();
-//		doAction(goalreceive, maxTicksPerAction, testAgentActive);
-		
-//		currentState = (LabRecruitsState) currentObservation();
-//		System.out.println("Active agent- observation after receive" + currentState);
 			
 		State oldState = currentState; // state before execution
 		System.out.println("Old state = "+ oldState);
-		//double currHealthpoint = testAgentActive.getState().worldmodel().health; // get current health point
+
 		LabRecruitsAction action = (LabRecruitsAction)a;  // this Action a should be mapped into a goal that the agent can execute
 		GoalStructure subGoal = getActionGoal(action.getActionId(), action.getInteractedEntity().type, testAgentActive);
 		
@@ -665,10 +658,7 @@ public class LabRecruitsRLMultiAgentEnvironment implements Environment {
 			doExplore(testAgentActive);
 			currentState = (LabRecruitsState) currentObservation();
 			System.out.println(testAgentActive.getId()+"  - Current state before receive = " + currentState);
-//		boolean terminated = isFinal(currentState); // check if the current state is terminal state
-		
-//		if (subGoal!=null)
-//		{
+
 			RunPassiveAgent();
 			GoalStructure goalreceive=  receiveObservationShare();
 			doAction(goalreceive, maxTicksPerAction, testAgentActive);
@@ -682,42 +672,22 @@ public class LabRecruitsRLMultiAgentEnvironment implements Environment {
 			System.out.println(testAgentActive.getId()+ " - Current state after receive = " + currentState);
 			terminated = isFinal(currentState);
 			
-//			currentState = (LabRecruitsState) currentObservation();  //update current state	after executing the chosen action
 			
-			if (subGoal.getStatus().success()==true) 
-			{ // reward calculation and next state observation if only goal is successful
-				// clearing agents memory after nth interval before making an observation
-//				if((updateCycles>0) && (updateCycles % memorywipeinterval)==0) 
-//				{
-//					System.out.println("Update cycle= "+updateCycles+  " Clearing agent's memeory");
-//					clearAgentMemory(testAgentActive);
-//					System.out.println("Check after clearing memory, num of entity in memory = "+testAgentActive.getState().knownEntities().size());
-//					//doExplore();					
-//				}
-					
-//				if(exploreoptionOn ==true) // do an explore of the environment before making next observation
-//					doExplore(testAgentActive);  // after executing an action the agent should explore to grasp the impact of the action before taking new observation
-				
-				//RunPassiveAgent();
-				//GoalStructure goalreceive=  receiveObservationShare();
-				//doAction(goalreceive, maxTicksPerAction, testAgentActive);
-				
-				
-					
+			if (subGoal.getStatus().success()==true) // reward calculation and next state observation if only goal is successful
+			{ 
 				if (testingenvironment==true) {
-					//lastReward =getReward(oldState, currentState, action);
-					System.out.println("Testing environment - reward = "+lastReward);
-					/*-------------For functional coverage calculation (for all RL algorithm)------------------------------------------*/
-					if(functionalCoverageFlag==true)  
-					{
-						double rewardfunc= UpdateGoalList(currentState);
-						//UpdateConnectionCoverage((LabRecruitsState)oldState,currentState,action);
-					}
-					
+					System.out.println("Testing environment - reward = "+lastReward);					
 				}else {
 					lastReward = getReward(oldState, currentState, action);
 				}
 				System.out.println("Action = "+ action.actionName()+  " ,executed successfully, reward = "+lastReward);
+				
+				/*-------------For functional coverage calculation (for all RL algorithm)------------------------------------------*/
+				if(functionalCoverageFlag==true)  
+				{
+					double rewardfunc= UpdateGoalList(currentState);
+					//UpdateConnectionCoverage((LabRecruitsState)oldState,currentState,action);
+				}
 			}
 			else 
 			{
@@ -725,26 +695,7 @@ public class LabRecruitsRLMultiAgentEnvironment implements Environment {
 				System.out.println("Action =  "+ action.actionName()+  " ,execution failure/inprogress, no reward = "+ lastReward);
 			}
 		
-			/*------------Penalty for health loss and death- applicable to all kind of RL algorithm*/
-			//case 1: penalty for health loss. penalty value is the point that is lost for executing this action  
-			//if(testAgentActive.getState().worldmodel().health<HealthThreshold) {  // penalty if only health point is below threshold
-			//	lastReward =  lastReward- (currHealthpoint - testAgentActive.getState().worldmodel().health);
-			//	DPrint.ul("Penalty for health loss = "+(currHealthpoint - testAgentActive.getState().worldmodel().health)+"  final reward ="+lastReward);
-			//}
 			
-			//case 2: big penalty if agent dies and end the episode
-			//if (testAgentActive.getState().worldmodel().health <= 0)
-			//{
-			//	terminated = true;
-				//System.out.println("----EMERGENCY NOTICE : AGENT DIED. Health point =  "+ testAgent.getState().worldmodel().health);
-			//	lastReward =lastReward - 100*100;
-			//	AgentDeadFlag= true;	
-			//	DPrint.ul("STOP SIMULAITON - AGENT DIED = "+testAgentActive.getState().worldmodel().health );
-			//}
-//		} // if goal is not empty
-		/*----------------------------------------------------------------------------------------------------------*/
-		//DPrint.ul("Goal status :" + lastReward);
-		//DPrint.ul("Goal status :" + subGoal.getStatus().toString());
 		}else {
 			lastReward = 0;
 		}
