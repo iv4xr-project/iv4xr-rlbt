@@ -37,7 +37,7 @@
       					</descriptorRefs>
       					<archive>
       						<manifest>
-      							<mainClass>eu.fbk.iv4xr.rlbt.RlbtMain</mainClass>
+      							<mainClass>eu.fbk.iv4xr.rlbt.RlbtMultiAgentMain</mainClass>
       						</manifest>
       					</archive>
       				</configuration>
@@ -101,7 +101,7 @@
 	<dependency>
 	    <groupId>com.github.iv4xr-project</groupId>
 	    <artifactId>iv4xrDemo</artifactId>
-	    <version>2.3.4b</version>
+	    <version>2.4.0</version>
 	</dependency>
 		<dependency>
 	    <groupId>commons-cli</groupId>

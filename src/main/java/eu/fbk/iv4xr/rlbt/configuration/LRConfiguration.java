@@ -24,6 +24,11 @@ public class LRConfiguration extends Configuration{
 		parameters.put("labrecruits.functionalCoverage", true);
 		parameters.put("labrecruits.max_actions_since_last_new_state", 100);
 		parameters.put("labrecruits.rewardtype", "CuriousityDriven");
+		
+		parameters.put("labrecruits.testingsession", false);
+		parameters.put("labrecruits.memory_clean_interval_action", 2);
+		parameters.put("labrecruits.exploreEventOn", true);
+		parameters.put("labrecruits.actionOnlySwitch", false);
 	}
 	
 }
