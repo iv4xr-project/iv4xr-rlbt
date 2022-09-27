@@ -548,10 +548,14 @@ public class LabRecruitsRLMultiAgentEnvironment implements Environment {
 	/**
 	 * Clear the agent's memory before exploration. This forces the agent to 'refresh' its belief state after an action.
 	 */
-	private void clearAgentMemory (LabRecruitsTestAgent testAgent) {
+	private void clearAgentMemory (LabRecruitsTestAgent testAgent, boolean clearWom, boolean clearVisistedNodes) {
 		//System.out.println("Clearing agent's memeory of old observations");
-		testAgent.getState().worldmodel.elements.clear();
-		testAgent.getState().pathfinder().wipeOutMemory();
+		if (clearWom) {
+			testAgent.getState().worldmodel.elements.clear();
+		}
+		if (clearVisistedNodes) {
+			testAgent.getState().pathfinder().wipeOutMemory();
+		}
 	}
 	
 	
@@ -629,7 +633,7 @@ public class LabRecruitsRLMultiAgentEnvironment implements Environment {
 		DPrint.ul("-----------------START EXPLORATION--"+ testAgent.getId()+ "-------In doExplore()-----");
 		
 		// first clear the agent's memory, otherwise the explore will not have any meaningful effect
-		clearAgentMemory(testAgent);
+		clearAgentMemory(testAgent, true, false);
 		
 		GoalStructure goal = explore();
 		doAction(goal, maxTicksPerAction, testAgent);
@@ -937,6 +941,12 @@ public class LabRecruitsRLMultiAgentEnvironment implements Environment {
 		  //             + testAgent.getState().id + " @" + testAgent.getState().worldmodel.position) ;
 			tickCounter++;
 		}
+		
+		// if agent is stuck, clear its memory
+		if (testAgent.getState().isStuck()) {
+			clearAgentMemory(testAgent, false, true);
+		}
+		
 		//System.out.println("-----------------------------------------------------------------------------");
 	}
 	
