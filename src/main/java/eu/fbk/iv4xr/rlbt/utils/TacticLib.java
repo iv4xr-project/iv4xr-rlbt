@@ -124,7 +124,7 @@ public class TacticLib {
 
 				. on((BeliefState belief) -> {
 
-					var e = (LabEntity) belief.worldmodel.getElement(id) ;
+					var e = (LabEntity) belief.worldmodel().getElement(id) ;
     			    if (e==null) return null ;
 
 					Vec3 closeByLocation = null ;
@@ -140,7 +140,7 @@ public class TacticLib {
 					    || belief.getMemorizedPath() == null) {
 						// in all these cases we need to calculate the location to go
 
-						//var agent_location = belief.worldmodel.getFloorPosition() ;
+						//var agent_location = belief.worldmodel().getFloorPosition() ;
 	    			    var entity_location = e.getFloorPosition() ;
 	    			    // Calculate the center of the square on which the target entity is located.
 	    			    // Note: the bottom-left position of the bottom-left corner is (0.5,-,0.5) so this need to be taken into
@@ -296,7 +296,7 @@ public class TacticLib {
     	Action move = unguardedNavigateTo("Navigate to " + id)
     			      // replacing its guard with this new one:
 		              . on((BeliefState belief) -> {
-		                	var e = (LabEntity) belief.worldmodel.getElement(id) ;
+		                	var e = (LabEntity) belief.worldmodel().getElement(id) ;
 		    			    if (e==null) return null ;
 		    			    var p = e.getFloorPosition() ;
 		    			    // find path to p, but don't force re-calculation
@@ -377,7 +377,7 @@ public class TacticLib {
 
                 	//if a new path is received, memorize it as the current path to follow:
                 	if (path!= null) {
-                		belief.applyPath(belief.worldmodel.timestamp, destination, path) ;
+                		belief.applyPath(belief.worldmodel().timestamp, destination, path) ;
                 	}
                     //move towards the next way point of whatever the current path is:
                 	//System.out.println(">>> destination: " + destination) ;
@@ -435,7 +435,7 @@ public class TacticLib {
     public static Tactic forceReplanPath() {
         Tactic clearTargetPosition = action("Force path recalculation.")
                 .do1((BeliefState belief) -> {
-                	System.out.println("####Detecting some doors change their state. Forcing path recalculation @" + belief.worldmodel.position) ;
+                	System.out.println("####Detecting some doors change their state. Forcing path recalculation @" + belief.worldmodel().position) ;
                 	belief.clearGoalLocation();
                 	try {
                 		Thread.sleep(700); // waiting for the door animation
@@ -462,7 +462,7 @@ public class TacticLib {
                 	return someDoorHasChangedState ;
                 	/*
                 	if (belief.getGoalLocation() == null
-                		|| belief.worldmodel.timestamp - belief.getGoalLocationTimestamp() < 50) {
+                		|| belief.worldmodel().timestamp - belief.getGoalLocationTimestamp() < 50) {
                 		return false ;
                 	}
 
@@ -491,13 +491,13 @@ public class TacticLib {
     	Tactic unstuck = action("Trying to unstuck")
     			.do1((BeliefState belief) -> {
     				System.out.println("#### STUCK, probably cannot get past a turn-corner: @"
-    			           + belief.worldmodel.position
+    			           + belief.worldmodel().position
     			           + ", current way-point: "
     			           + belief.getCurrentWayPoint()) ;
     	    		var unstuckPosition = unstuck(belief) ;
     	    		if (unstuckPosition != null) {
     	    			// no need to do this anymore; as moveToward now uses the agent's floor-pos as reference
-    	    			// unstuckPosition.y += belief.worldmodel.extent.y ;
+    	    			// unstuckPosition.y += belief.worldmodel().extent.y ;
     	    			System.out.println("#### forcing a move past the corner...to " + unstuckPosition) ;
     	    			//belief.mentalMap.insertNewWayPoint(unstuckPosition);
     	    			belief.env().moveToward(belief.id, belief.worldmodel().getFloorPosition() ,unstuckPosition) ;
@@ -522,13 +522,13 @@ public class TacticLib {
     	Tactic unstuck = action("Trying to unstuck")
     			.do1((BeliefState belief) -> {
     				System.out.println("#### STUCK, probably cannot get past a turn-corner: @"
-    			           + belief.worldmodel.position
+    			           + belief.worldmodel().position
     			           + ", current way-point: "
     			           + belief.getCurrentWayPoint()) ;
     	    		var unstuckPosition = unstuckAggressively(belief) ;
     	    		if (unstuckPosition != null) {
     	    			// no need to do this anymore; as moveToward now uses the agent's floor-pos as reference
-    	    			// unstuckPosition.y += belief.worldmodel.extent.y ;
+    	    			// unstuckPosition.y += belief.worldmodel().extent.y ;
     	    			System.out.println("#### forcing a move past the corner...to " + unstuckPosition) ;
     	    			//belief.mentalMap.insertNewWayPoint(unstuckPosition);
     	    			belief.env().moveToward(belief.id, belief.worldmodel().getFloorPosition() ,unstuckPosition) ;
@@ -655,16 +655,16 @@ public class TacticLib {
                       return belief;
                     })
                . on((BeliefState belief) -> {
-                	var e = belief.worldmodel.getElement(objectID) ;
+                	var e = belief.worldmodel().getElement(objectID) ;
                 	//System.out.println(">>>> " + objectID + ": " + e) ;
                 	if (e==null) return null ;
-                	// System.out.println(">>>>    dist: " + Vec3.dist(belief.worldmodel.getFloorPosition(),e.getFloorPosition())) ;
+                	// System.out.println(">>>>    dist: " + Vec3.dist(belief.worldmodel().getFloorPosition(),e.getFloorPosition())) ;
 
                 	if (belief.canInteract(e.id)) {
                 		return e ;
                 	}
                 	//System.out.println(">>> cannot interact with " + e.id) ;
-            		//System.out.println("    Agent pos: " + belief.worldmodel.getFloorPosition()) ;
+            		//System.out.println("    Agent pos: " + belief.worldmodel().getFloorPosition()) ;
             		//System.out.println("    Entity pos:" + e.getFloorPosition()) ;
             		//System.out.println("    Entity extent:" + e.extent) ;
             		
@@ -683,7 +683,7 @@ public class TacticLib {
         //this is a wait action which will allow the agent to retrieve an observation
         Tactic observe = action("Observe")
                 .do1((BeliefState belief) -> {
-                	// var obs = belief.worldmodel.observe(belief.env());
+                	// var obs = belief.worldmodel().observe(belief.env());
                 	// force wom update:
                 	// belief.mergeNewObservationIntoWOM(obs) ;
 
@@ -702,7 +702,7 @@ public class TacticLib {
                 	LabWorldModel o = belief.env().observe(belief.id);
                     belief.updateBelief(o);
                     return belief;
-                }).on((BeliefState b) -> !b.worldmodel.didNothingPreviousGameTurn).lift();
+                }).on((BeliefState b) -> !b.worldmodel().didNothingPreviousGameTurn).lift();
         return observe;
     }
     */
@@ -745,16 +745,16 @@ public class TacticLib {
                     while(m != null){
                         //apply the memory share
                     	var obs = (LabWorldModel) m.getArgs()[0] ;
-                    	if (obs.timestamp >= belief.worldmodel.timestamp) {
+                    	if (obs.timestamp >= belief.worldmodel().timestamp) {
                     		// Don't do this! It would take over the agent position of the new obs.
-                    		// belief.worldmodel.mergeNewObservation(obs) ;
+                    		// belief.worldmodel().mergeNewObservation(obs) ;
                     		// Do this instead:
                     		for (WorldEntity e : obs.elements.values()) {
-                    			belief.worldmodel.updateEntity(e) ;
+                    			belief.worldmodel().updateEntity(e) ;
                     		}
                     	}
                     	else {
-                    		belief.worldmodel.mergeOldObservation(obs) ;
+                    		belief.worldmodel().mergeOldObservation(obs) ;
                     	}
                     	belief.pathfinder().markAsSeen(obs.visibleNavigationNodes);
                         m = belief.messenger().retrieve(M -> M.getMsgName().equals("ObservationSharing")) ;
@@ -780,16 +780,16 @@ public class TacticLib {
                     while(m != null){
                         //apply the memory share
                     	LabWorldModel obs = (LabWorldModel) m.getArgs()[0] ;
-                    	if (obs.timestamp >= belief.worldmodel.timestamp) {
+                    	if (obs.timestamp >= belief.worldmodel().timestamp) {
                     		// Don't do this! It would take over the agent position of the new obs.
-                    		// belief.worldmodel.mergeNewObservation(obs) ;
+                    		// belief.worldmodel().mergeNewObservation(obs) ;
                     		// Do this instead:
                     		for (WorldEntity e : obs.elements.values()) {
-                    			belief.worldmodel.updateEntity(e) ;
+                    			belief.worldmodel().updateEntity(e) ;
                     		}
                     	}
                     	else {
-                    		belief.worldmodel.mergeOldObservation(obs) ;
+                    		belief.worldmodel().mergeOldObservation(obs) ;
                     	}
                     	belief.pathfinder().markAsSeen(obs.visibleNavigationNodes);
                         m = belief.messenger().retrieve(M -> M.getMsgName().equals("ObservationSharing")) ;
@@ -865,7 +865,7 @@ public class TacticLib {
 
         				 if (path==null || path.isEmpty()) {
         					memo.moveState("exhausted") ;
-                            System.out.println("### no new and reachable navigation point found; agent is @" + belief.worldmodel.position) ;
+                            System.out.println("### no new and reachable navigation point found; agent is @" + belief.worldmodel().position) ;
                             return null ;
         				 }
         				 List<Vec3> explorationPath = path.stream()
