@@ -108,7 +108,7 @@ public class RlbtMultiAgentMain{
 		labRecruitsRlEnvironment.startAgentEnvironment();
 		for(int i = 0; i < numEpisodes; i++){	
 			System.out.println("Episode = "+(i+1)+" Starting");
-			labRecruitsRlEnvironment.resetStateMemory();   // reset state buffer at the beginning of an episode
+			//labRecruitsRlEnvironment.resetStateMemory();   // reset state buffer at the beginning of an episode
 			long startTime = System.currentTimeMillis();
 			episodes.add(agent.runLearningEpisode(labRecruitsRlEnvironment, maxActionsPerEpisode));
 			long estimatedTime = System.currentTimeMillis() - startTime;
@@ -119,6 +119,7 @@ public class RlbtMultiAgentMain{
 			episodeTime.add(estimatedTime);
 			
 			labRecruitsRlEnvironment.GlobalCoveragePerEpisode();
+			labRecruitsRlEnvironment.resetStateMemory();   // reset state buffer at the beginning of an episode
 			labRecruitsRlEnvironment.resetEnvironment();  /*reset environment*/
 		}
 		
@@ -348,7 +349,7 @@ public class RlbtMultiAgentMain{
 		labRecruitsRlMultiAgentEnv.startAgentEnvironment();
 		for(int i = 0; i < numEpisodes; i++){	
 			System.out.println("Starting Episode = "+(i+1));
-			labRecruitsRlMultiAgentEnv.resetStateMemory();   // reset state buffer at the beginning of an episode
+			//labRecruitsRlMultiAgentEnv.resetStateMemory();   // reset state buffer at the beginning of an episode
 			long startTime = System.currentTimeMillis();
 			episodes.add(agent.runLearningEpisode(labRecruitsRlMultiAgentEnv, maxActionsPerEpisode));
 			long estimatedTime = System.currentTimeMillis() - startTime;
@@ -363,6 +364,7 @@ public class RlbtMultiAgentMain{
 			labRecruitsRlMultiAgentEnv.printGoalEntities();
 			System.out.println("Coverage stat till episode "+(i+1));
 			labRecruitsRlMultiAgentEnv.GlobalCoveragePerEpisode();
+			labRecruitsRlMultiAgentEnv.resetStateMemory();   // reset state buffer at the beginning of an episode
 			labRecruitsRlMultiAgentEnv.resetEnvironment();  //reset environment
 		}
 
