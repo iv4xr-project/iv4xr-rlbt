@@ -691,6 +691,12 @@ public class QLearningRL extends MDPSolver implements QProvider, LearningAgent, 
 		//while(!env.isInTerminalState() && (eStepCounter < maxSteps || maxSteps == -1)){
 		while(!env.isInTerminalState() && (eStepCounter < maxSteps || maxSteps == -1)){
 			System.out.println("==================Qlearning - Next turn for this episode==================================");
+			LabRecruitsState currentState = (LabRecruitsState) initialState;
+			if(currentState.numObjects()==0) {
+				System.out.println(" BUG : Empty Observation of RL active agent. Ending Episode...");
+				break;
+			}
+			
 			QLearningStateNode similarnode=null;
 			if (qFunction.size()>0 && ((qFunction.containsKey(curState)==false)))
 			{
@@ -801,6 +807,13 @@ public class QLearningRL extends MDPSolver implements QProvider, LearningAgent, 
 		
 		eStepCounter = 0;
 		while(!env.isInTerminalState() && (eStepCounter < maxSteps || maxSteps == -1)){
+			LabRecruitsState currentState = (LabRecruitsState) initialState;
+			if(currentState.numObjects()==0) {
+				System.out.println(" BUG : Empty Observation of RL active agent. Ending Episode...");
+				break;
+			}
+
+			
 			List<Action> gas = this.applicableActions(curState.s());
 			int selected = rand.nextInt(gas.size());
 			Action action = gas.get(selected);  //learningPolicy.action(curState.s());
