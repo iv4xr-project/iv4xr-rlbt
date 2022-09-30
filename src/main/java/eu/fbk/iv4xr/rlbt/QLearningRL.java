@@ -691,8 +691,8 @@ public class QLearningRL extends MDPSolver implements QProvider, LearningAgent, 
 		//while(!env.isInTerminalState() && (eStepCounter < maxSteps || maxSteps == -1)){
 		while(!env.isInTerminalState() && (eStepCounter < maxSteps || maxSteps == -1)){
 			System.out.println("==================Qlearning - Next turn for this episode==================================");
-			LabRecruitsState currentState = (LabRecruitsState) initialState;
-			if(currentState.numObjects()==0) {
+			LabRecruitsState curlabState = (LabRecruitsState) (curState.s());
+			if(curlabState.numObjects()==0) {
 				System.out.println(" BUG : Empty Observation of RL active agent. Ending Episode...");
 				break;
 			}
