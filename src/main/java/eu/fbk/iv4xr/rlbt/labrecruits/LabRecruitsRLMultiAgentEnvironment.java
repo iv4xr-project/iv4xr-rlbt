@@ -6,7 +6,6 @@ package eu.fbk.iv4xr.rlbt.labrecruits;
 import static nl.uu.cs.aplib.AplibEDSL.ABORT;
 import static nl.uu.cs.aplib.AplibEDSL.FIRSTof;
 import static nl.uu.cs.aplib.AplibEDSL.SEQ;
-import static nl.uu.cs.aplib.AplibEDSL.action;
 import static nl.uu.cs.aplib.AplibEDSL.goal;
 
 import java.io.BufferedReader;
@@ -21,8 +20,6 @@ import java.util.List;
 import java.util.StringTokenizer;
 
 import agents.LabRecruitsTestAgent;
-//import agents.tactics.GoalLib;
-//import agents.tactics.TacticLib;
 import burlap.debugtools.DPrint;
 import burlap.mdp.core.action.Action;
 import burlap.mdp.core.state.State;
@@ -37,21 +34,17 @@ import eu.fbk.iv4xr.rlbt.distance.StateDistance;
 import eu.fbk.iv4xr.rlbt.labrecruits.rewardfunctions.CoverageOrientedRewardFunction;
 import eu.fbk.iv4xr.rlbt.labrecruits.rewardfunctions.GoalOrientedRewardFunction;
 import eu.fbk.iv4xr.rlbt.rewardfunction.RlbtRewardFunction;
-import eu.fbk.iv4xr.rlbt.utils.TacticLib;
 import eu.fbk.iv4xr.rlbt.utils.GoalLib;
+import eu.fbk.iv4xr.rlbt.utils.TacticLib;
 import eu.iv4xr.framework.mainConcepts.TestDataCollector;
 import eu.iv4xr.framework.mainConcepts.WorldEntity;
 import game.LabRecruitsTestServer;
 import game.Platform;
 import nl.uu.cs.aplib.mainConcepts.Goal;
 import nl.uu.cs.aplib.mainConcepts.GoalStructure;
-import nl.uu.cs.aplib.mainConcepts.Tactic;
-import nl.uu.cs.aplib.multiAgentSupport.Acknowledgement;
 import nl.uu.cs.aplib.multiAgentSupport.ComNode;
-import nl.uu.cs.aplib.multiAgentSupport.Message;
 import world.BeliefState;
 import world.LabEntity;
-import world.LabWorldModel;
 
 
 /**

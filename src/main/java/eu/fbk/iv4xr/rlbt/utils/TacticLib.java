@@ -373,7 +373,7 @@ public class TacticLib {
                 	var destination = q.fst ;
                 	var path = q.snd ;
 
-                	//System.out.println("### tactic NavigateTo " + destination) ;
+                	////System.out.println("### tactic NavigateTo " + destination) ;
 
                 	//if a new path is received, memorize it as the current path to follow:
                 	if (path!= null) {
@@ -435,7 +435,7 @@ public class TacticLib {
     public static Tactic forceReplanPath() {
         Tactic clearTargetPosition = action("Force path recalculation.")
                 .do1((BeliefState belief) -> {
-                	System.out.println("####Detecting some doors change their state. Forcing path recalculation @" + belief.worldmodel().position) ;
+                	//System.out.println("####Detecting some doors change their state. Forcing path recalculation @" + belief.worldmodel().position) ;
                 	belief.clearGoalLocation();
                 	try {
                 		Thread.sleep(700); // waiting for the door animation
@@ -490,52 +490,21 @@ public class TacticLib {
     public static Tactic tryToUnstuck() {
     	Tactic unstuck = action("Trying to unstuck")
     			.do1((BeliefState belief) -> {
-    				System.out.println("#### STUCK, probably cannot get past a turn-corner: @"
-    			           + belief.worldmodel().position
-    			           + ", current way-point: "
-    			           + belief.getCurrentWayPoint()) ;
-    	    		var unstuckPosition = unstuck(belief) ;
-    	    		if (unstuckPosition != null) {
-    	    			// no need to do this anymore; as moveToward now uses the agent's floor-pos as reference
-    	    			// unstuckPosition.y += belief.worldmodel().extent.y ;
-    	    			System.out.println("#### forcing a move past the corner...to " + unstuckPosition) ;
-    	    			//belief.mentalMap.insertNewWayPoint(unstuckPosition);
-    	    			belief.env().moveToward(belief.id, belief.worldmodel().getFloorPosition() ,unstuckPosition) ;
-    	    		}
-    	    		else {
-    	    			// else .... for now do nothing :|
-    	        		System.out.println("#### unfortunately cannot find an unstuck solution...") ;
-    	    		}
-    	    	    belief.clearStuckTrackingInfo();
-    				return belief ;
-    			})
-    			.on_((BeliefState belief) -> {
-    				//System.out.println(">>> stuck: " + belief.isStuck() + ", goal loc: " + belief.getGoalLocation()) ;
-    				return belief.getGoalLocation() != null &&  belief.isStuck() ;
-    			})
-    			.lift() ;
-    	return unstuck ;
-    }
-
-    
-    public static Tactic tryToUnstuckAggressively() {
-    	Tactic unstuck = action("Trying to unstuck")
-    			.do1((BeliefState belief) -> {
-    				System.out.println("#### STUCK, probably cannot get past a turn-corner: @"
-    			           + belief.worldmodel().position
-    			           + ", current way-point: "
-    			           + belief.getCurrentWayPoint()) ;
+    				//System.out.println("#### STUCK, probably cannot get past a turn-corner: @"
+//    			           + belief.worldmodel().position
+//    			           + ", current way-point: "
+//    			           + belief.getCurrentWayPoint()) ;
     	    		var unstuckPosition = unstuckAggressively(belief) ;
     	    		if (unstuckPosition != null) {
     	    			// no need to do this anymore; as moveToward now uses the agent's floor-pos as reference
     	    			// unstuckPosition.y += belief.worldmodel().extent.y ;
-    	    			System.out.println("#### forcing a move past the corner...to " + unstuckPosition) ;
+    	    			//System.out.println("#### forcing a move past the corner...to " + unstuckPosition) ;
     	    			//belief.mentalMap.insertNewWayPoint(unstuckPosition);
     	    			belief.env().moveToward(belief.id, belief.worldmodel().getFloorPosition() ,unstuckPosition) ;
     	    		}
     	    		else {
     	    			// else .... for now do nothing :|
-    	        		System.out.println("#### unfortunately cannot find an unstuck solution...") ;
+    	        		//System.out.println("#### unfortunately cannot find an unstuck solution...") ;
     	    		}
     	    	    belief.clearStuckTrackingInfo();
     				return belief ;
@@ -565,7 +534,7 @@ public class TacticLib {
 
     	var x_orientation = Math.signum(agent_current_direction.x) ;  // 1 if the agent is facing eastly, and -1 if westly
     	var z_orientation = Math.signum(agent_current_direction.z) ;  // 1 if the agent is facing northly, and -1 if southly
-    	// System.out.println("#### calling unstuck()") ;
+    	// //System.out.println("#### calling unstuck()") ;
     	// try E/W unstuck first:
     	if (x_orientation != 0) {
     		var p = belief.worldmodel().getFloorPosition() ;
@@ -590,7 +559,7 @@ public class TacticLib {
 
     	var x_orientation = Math.signum(agent_current_direction.x) ;  // 1 if the agent is facing eastly, and -1 if westly
     	var z_orientation = Math.signum(agent_current_direction.z) ;  // 1 if the agent is facing northly, and -1 if southly
-    	// System.out.println("#### calling unstuck()") ;
+    	// //System.out.println("#### calling unstuck()") ;
     	// try E/W unstuck first:
     	if (x_orientation != 0) {
     		var p = belief.worldmodel().getFloorPosition() ;
@@ -865,7 +834,7 @@ public class TacticLib {
 
         				 if (path==null || path.isEmpty()) {
         					memo.moveState("exhausted") ;
-                            System.out.println("### no new and reachable navigation point found; agent is @" + belief.worldmodel().position) ;
+                            //System.out.println("### no new and reachable navigation point found; agent is @" + belief.worldmodel().position) ;
                             return null ;
         				 }
         				 List<Vec3> explorationPath = path.stream()
@@ -873,9 +842,9 @@ public class TacticLib {
         						            .collect(Collectors.toList()) ;
 
         				 var target = explorationPath.get(explorationPath.size() - 1) ;
-        				 System.out.println("### setting a new exploration target: " + target) ;
-                         System.out.println("### abspath to exploration target: " + path) ;
-                         System.out.println("### path to exploration target: " + explorationPath) ;
+        				 //System.out.println("### setting a new exploration target: " + target) ;
+                         //System.out.println("### abspath to exploration target: " + path) ;
+                         //System.out.println("### path to exploration target: " + explorationPath) ;
                          memo.memorized.clear();
                          memo.memorize(target);
                          memo.moveState("inTransit") ; // move the exploration state to inTransit...
@@ -896,7 +865,7 @@ public class TacticLib {
                         	 memo.moveState("S0");
                          }
                          if (distToExplorationTarget<=EXPLORATION_TARGET_DIST_THRESHOLD) {
-                        	 System.out.println("### dist to explroration target " + distToExplorationTarget) ;
+                        	 ////System.out.println("### dist to explroration target " + distToExplorationTarget) ;
                          }
                          // System.out.println(">>> explore in-transit: " + memo.stateIs("inTransit")) ;
                          // System.out.println(">>> exploration target: " + exploration_target) ;
@@ -914,7 +883,6 @@ public class TacticLib {
         return FIRSTof(
         		 forceReplanPath(),
         		 tryToUnstuck(),
-				 tryToUnstuckAggressively(),
 				 explore_) ;
     }
 
