@@ -550,7 +550,7 @@ public class LabRecruitsRLEnvironment implements Environment {
 		clearAgentMemory();
 				
 		GoalStructure goal = explore();
-		doAction(goal, (maxTicksPerAction*2));  // double the exploration time to be compared with multi-agent (passive-active structure)
+		doAction(goal, (maxTicksPerAction));  // double the exploration time to be compared with multi-agent (passive-active structure)
 		DPrint.ul("-------END EXPLORATION ---------------------------------");
 	}
 	
