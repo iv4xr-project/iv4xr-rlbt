@@ -105,7 +105,7 @@ public class JaccardDistance implements StateDistance {
 		//if(numcommonFeature==0)
 		//	System.out.println("subsume()- no common entities");
 		
-		System.out.println("subsume()-tot feature= "+ totalFeatureS1+"  comm= "+ numcommonFeature+"  subsumeFag = "+flagsubsume);		
+		//System.out.println("subsume()-tot feature= "+ totalFeatureS1+"  comm= "+ numcommonFeature+"  subsumeFag = "+flagsubsume);		
 		return flagsubsume;
 	}
 	

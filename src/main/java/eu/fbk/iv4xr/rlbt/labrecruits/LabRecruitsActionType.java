@@ -19,6 +19,16 @@ public class LabRecruitsActionType implements ActionType, Serializable {
 	 */
 	private static final long serialVersionUID = -2485595856688888098L;
 	private String typeName = "entityAction";
+	private boolean ActionOnlySwitch = false;
+	
+	public boolean isActionOnlySwitch() {
+		return ActionOnlySwitch;
+	}
+
+	public void setActionOnlySwitch(boolean actionOnlySwitch) {
+		ActionOnlySwitch = actionOnlySwitch;
+	}
+
 	public LabRecruitsActionType() {
 		// TODO Auto-generated constructor stub
 	}
@@ -46,11 +56,21 @@ public class LabRecruitsActionType implements ActionType, Serializable {
 			
 			WorldEntity entity = (WorldEntity) labEntityObject.get(name);
 			//System.out.println("ID & TYPE = "+ entity.id+"  "+ entity.type);
-			if(entity.type == "Switch")   // considering only the switch/button interaction as action
+			//System.out.println("Action type = Switch");
+			if (ActionOnlySwitch== true) {
+				if(entity.type == "Switch")   // considering only the switch/button interaction as action
+				{
+					//System.out.println("Only switch as action");
+					LabRecruitsAction labRecruitsAction = new LabRecruitsAction(entity.id);
+					labRecruitsAction.setInteractedEntity(entity);
+					actions.add(labRecruitsAction);
+				}
+			}
+			else
 			{
 				LabRecruitsAction labRecruitsAction = new LabRecruitsAction(entity.id);
 				labRecruitsAction.setInteractedEntity(entity);
-				actions.add(labRecruitsAction);
+				actions.add(labRecruitsAction);			
 			}
 		}
 		return actions;

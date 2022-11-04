@@ -54,7 +54,7 @@ public class RlbtMain{
 	static String lrConfigFile = currentDir+"/src/test/resources/configurations/buttons_doors_1.config";
 
 	// root folder for writing output
-	static String outputDir = currentDir + File.separator + "rlbt-files"+ File.separator + System.nanoTime();
+	static String outputDir = currentDir + File.separator + "rlbt-files"+ File.separator + "results";//System.nanoTime();
 	
 	// Configurations
 	static BurlapConfiguration burlapConfiguration = new BurlapConfiguration();
@@ -165,7 +165,7 @@ public class RlbtMain{
 
 	/*execute training with pure random explore*/
 	private static List<Episode> executeRandomTrainingOnLabRecruits() throws InterruptedException, FileNotFoundException {
-		
+		System.out.println("------------RANDOM ALGORITHM-----------------------------------------");
 		LabRecruitsRLEnvironment labRecruitsRlEnvironment = new LabRecruitsRLEnvironment(lrConfiguration, new JaccardDistance());
 		DomainGenerator lrDomainGenerator = new LabRecruitsDomainGenerator();
 		final SADomain domain = (SADomain) lrDomainGenerator.generateDomain();
@@ -314,20 +314,28 @@ public class RlbtMain{
 				(double)burlapConfiguration.getParameterValue("burlap.qlearning.lr"));
 		long startTime = System.currentTimeMillis();
 		
-		String qtablePath = outputDir + File.separator + "Cqtable.ser";//(String)burlapConfiguration.getParameterValue("burlap.qlearning.out_qtable");
+		String qtablePath = outputDir + File.separator + "cqtable.ser";//(String)burlapConfiguration.getParameterValue("burlap.qlearning.out_qtable");
 		agent.deserializeQTable(qtablePath );
 		agent.printFinalQtable(System.out);
 		
 		System.out.println("Start testing agent");
-		labRecruitsRlEnvironment.startAgentEnvironment();
-		
-		Episode episode = agent.testQLearingAgent(labRecruitsRlEnvironment, maxActionsPerEpisode);
-
-		labRecruitsRlEnvironment.resetStateMemory();   // reset state buffer at the beginning of an episode
-		labRecruitsRlEnvironment.stopAgentEnvironment();  /*stop RL agent environment*/
-	
-		return episode;
+		int numTestingEpisodes=10;
+		for(int i = 0; i < numTestingEpisodes; i++){			
+			labRecruitsRlEnvironment.startAgentEnvironment();
+			
+			Episode episode = agent.testQLearingAgent(labRecruitsRlEnvironment, maxActionsPerEpisode);
+			System.out.println("Finished Episode = "+ (i));
+			labRecruitsRlEnvironment.CalculateEpisodeCoverage();
+			labRecruitsRlEnvironment.CalculateGlobalCoverageAfterTraining();
+			labRecruitsRlEnvironment.CalculateConnectionCoverage();
+			labRecruitsRlEnvironment.resetStateMemory();   // reset state buffer at the beginning of an episode
+			labRecruitsRlEnvironment.stopAgentEnvironment();  /*stop RL agent environment*/
+		}
+		Episode episode1 = agent.testQLearingAgent(labRecruitsRlEnvironment, maxActionsPerEpisode);
+		return episode1;
 	}
+
+
 
 	
 	/**
