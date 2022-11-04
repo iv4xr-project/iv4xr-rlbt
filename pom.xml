@@ -7,7 +7,7 @@
     <!--  <groupId>nl.uu.cs.muscleai.labrecruits</groupId> -->
     <groupId>com.github.iv4xr-project</groupId>
     <artifactId>iv4xr-rlbt</artifactId>
-    <version>0.1</version>
+    <version>1.0</version>
     <build>
         <plugins>
             <plugin>

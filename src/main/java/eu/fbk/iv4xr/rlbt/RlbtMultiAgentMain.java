@@ -58,7 +58,7 @@ public class RlbtMultiAgentMain{
 	static String lrmultiagentConfigFile = currentDir+"/src/test/resources/configurations/lrLevelMultiAgent.config"; //multi-agent configuration 
 
 	// root folder for writing output
-	static String outputDir = currentDir + File.separator + "rlbt-files"+ File.separator + "results";//System.nanoTime();
+	static String outputDir = currentDir + File.separator + "rlbt-files"+ File.separator + "results" + File.separator + System.nanoTime();
 	
 	// Configurations
 	static BurlapConfiguration burlapConfiguration = new BurlapConfiguration();
@@ -478,38 +478,38 @@ public class RlbtMultiAgentMain{
 				.hasArg(true)
 				.required(false)
 				.type(String.class)
-				.desc("burlap config file")
+				.desc("burlap configuration file")
 				.build();
 		
 		Option sutConfig   = Option.builder("sutConfig")
 				.hasArg(true)
 				.required(false)
 				.type(String.class)
-				.desc("SUT config file")
+				.desc("SUT configuration file")
 				.build();
 		
 		Option trainingMode = Option.builder("trainingMode")
 				.required(false)
 				.type(String.class)
-				.desc("Execute training phase")
+				.desc("Execute single-agnet training phase")
 				.build();
 
 		Option testingMode = Option.builder("testingMode")
 				.required(false)
 				.type(String.class)
-				.desc("Execute testing phase")
+				.desc("Execute single-agent testing phase")
 				.build();
 
 		Option randomMode = Option.builder("randomMode")
 				.required(false)
 				.type(String.class)
-				.desc("Execute a random learning agent")
+				.desc("Execute a random single learning agent")
 				.build();
 		
 		Option multiagentTrainingMode = Option.builder("multiagentTrainingMode")
 				.required(false)
 				.type(String.class)
-				.desc("Execute Multi-agent training phase")
+				.desc("Execute multi-agent training phase")
 				.build();
 		
 		options.addOption(help);
@@ -571,14 +571,22 @@ public class RlbtMultiAgentMain{
 	 */
 
 	public static void main(String[] args) throws InterruptedException, FileNotFoundException {
-	    try {
-	    	RlbtMultiAgentMain main = new RlbtMultiAgentMain ();
-			Options options = main.buildCommandLineOptions() ;
-			
+		RlbtMultiAgentMain main = new RlbtMultiAgentMain ();
+		Options options = main.buildCommandLineOptions() ;
+	    
+		CommandLine line = null;
+		try {
 			// parse command line arguments, if any
 			CommandLineParser parser = new DefaultParser();
 			// parse the command line arguments
-	        CommandLine line = parser.parse( options , args );
+	        line = parser.parse( options , args );
+		}catch( ParseException exp ) {
+	        System.err.println( "Parsing command line failed.  Reason: " + exp.getMessage() );
+	    }
+		
+        if (line == null || line.hasOption("help") || line.getOptions().length == 0) {
+			printCommandLineHelp(options);
+		}else {
 	        boolean loadAndSetParameter = main.loadAndSetParameter(line,options);
 	        // choose testing or training
 	        if (loadAndSetParameter) {
@@ -594,22 +602,39 @@ public class RlbtMultiAgentMain{
 					}else if (line.hasOption("multiagentTrainingMode")) {
 						main.executeMultiAgentTraining(line, options);
 					}else {
-						System.err.println("Must specify  -trainingMode or -testingMode");	
+						printCommandLineHelp(options);
+						System.exit(1);
+						//System.err.println("Must specify  -trainingMode or -testingMode");	
 					}
 					// save configurations in output directory for reproducibility
 					saveConfigurations();
 	        	}else {
 	        		System.err.println("Quitting because unable to create output directory: " + outputDir);
+	        		System.exit(1);
 	        	}
 			}else {
 				System.err.println( "Fail to load parameter files. Quitting!");
+				System.exit(1);
 			}
+		}
 	        
-	        saveConfigurations();
-	    }
-	    catch( ParseException exp ) {
-	        System.err.println( "Parsing command line failed.  Reason: " + exp.getMessage() );
-	    }
+//	        saveConfigurations();
+	    
+	}
+
+	/**
+	 * display command line help to the user
+	 * @param options
+	 */
+	private static void printCommandLineHelp(Options options) {
+		HelpFormatter formatter = new HelpFormatter();
+		// Do not sort				
+		formatter.setOptionComparator(null);
+		// Header and footer strings
+		String header = "Reinforcement Learning Based Testing\n\n";
+		String footer = "\nPlease report issues at https://github.com/iv4xr-project/iv4xr-rlbt/issues";
+		 
+		formatter.printHelp("RLbT",header, options, footer , false);
 	}
 
 
