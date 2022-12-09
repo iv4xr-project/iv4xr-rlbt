@@ -265,6 +265,7 @@ public class QLearningRL extends MDPSolver implements QProvider, LearningAgent, 
 		this.QLInit(domain, gamma, hashingFactory, new ConstantValueFunction(qInit), learningRate, new EpsilonGreedy(this, 0.1), Integer.MAX_VALUE);
 	}
 
+	
 	public QLearningRL(SADomain domain, double gamma, HashableStateFactory hashingFactory,
 			double qInit, double learningRate, double epsilonval, double decayepsilonstep, int maxEpisodeSize) {
 		this.QLInit(domain, gamma, hashingFactory, new ConstantValueFunction(qInit), learningRate, new EpsilonGreedy(this, epsilonval), epsilonval, decayepsilonstep, maxEpisodeSize);
