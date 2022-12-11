@@ -9,6 +9,7 @@ import static nl.uu.cs.aplib.AplibEDSL.SEQ;
 import static nl.uu.cs.aplib.AplibEDSL.goal;
 
 import java.io.BufferedReader;
+import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.FileReader;
 import java.io.IOException;
@@ -17,7 +18,9 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.StringTokenizer;
+import java.util.stream.Collectors;
 
 import agents.LabRecruitsTestAgent;
 import burlap.debugtools.DPrint;
@@ -29,6 +32,7 @@ import environments.LabRecruitsConfig;
 import environments.LabRecruitsEnvironment;
 import eu.fbk.iv4xr.rlbt.RlbtMain.RewardType;
 import eu.fbk.iv4xr.rlbt.RlbtMain.SearchMode;
+import eu.fbk.iv4xr.rlbt.RlbtMultiAgentMain;
 import eu.fbk.iv4xr.rlbt.configuration.LRMultiAgentConfiguration;
 import eu.fbk.iv4xr.rlbt.distance.StateDistance;
 import eu.fbk.iv4xr.rlbt.labrecruits.rewardfunctions.CoverageOrientedRewardFunction;
@@ -43,6 +47,7 @@ import game.Platform;
 import nl.uu.cs.aplib.mainConcepts.Goal;
 import nl.uu.cs.aplib.mainConcepts.GoalStructure;
 import nl.uu.cs.aplib.multiAgentSupport.ComNode;
+import nl.uu.cs.aplib.utils.Pair;
 import world.BeliefState;
 import world.LabEntity;
 
@@ -53,6 +58,9 @@ import world.LabEntity;
  */
 public class LabRecruitsRLMultiAgentEnvironment implements Environment {
 
+	private boolean dataCollectionEnabled = true;
+	private int traceCounter = 1;
+	
 	//temporary variable to test connection coverage
 	public static boolean functionalCoverageFlag =false;
 	private static boolean AgentDeadFlag = false;
@@ -455,6 +463,10 @@ public class LabRecruitsRLMultiAgentEnvironment implements Environment {
 				. registerTo(communication)
 				. setTestDataCollector(new TestDataCollector());
 		
+		if (dataCollectionEnabled) {
+			testAgentActive.withScalarInstrumenter(state -> instrumenter(testAgentActive.getState()));
+		}
+		
 		System.out.println("=========================start both agents with an explore=====================================");
 		// Both agent do an explore to start 
 		//Passive agent starts
@@ -472,7 +484,32 @@ public class LabRecruitsRLMultiAgentEnvironment implements Environment {
 		DPrint.ul ("Active agent - Initial observation state: "+ currentStateActive.toString());
 	}
 	
+	Pair<String,Number>[] instrumenter(BeliefState st) {
+		Pair<String,Number>[] out = new Pair[3] ;
+		out[0] = new Pair<String,Number>("posx",st.worldmodel.position.x) ;
+		out[1] = new Pair<String,Number>("posz",st.worldmodel.position.z) ;
+		out[2] = new Pair<String,Number>("time",st.worldmodel.timestamp) ;
+		//out[3] = new Pair<String,Number>("gcd",st.gcd) ;
+		//out[4] = new Pair<String,Number>("win",st.win ? 1 : 0) ;
+		return out ;
+	}
+	
 	public void stopAgentEnvironment() {
+//		if (dataCollectionEnabled) {
+//			List<Map<String,Number>> trace = testAgentActive
+//					. getTestDataCollector()
+//					. getTestAgentScalarsTrace(testAgentActive.getId())
+//			        . stream()
+//			        . map(event -> event.values) . collect(Collectors.toList());
+//			System.out.println(trace);
+//			try {
+//				testAgentActive.getTestDataCollector()
+//				 .saveTestAgentScalarsTraceAsCSV(testAgentActive.getId(),"trace11.csv");
+//			} catch (IOException e) {
+//				// TODO Auto-generated catch block
+//				e.printStackTrace();
+//			}
+//		}
 		labRecruitsAgentEnvironment.close();
 		stopTestServer();
 	}
@@ -541,7 +578,7 @@ public class LabRecruitsRLMultiAgentEnvironment implements Environment {
 	/**
 	 * Clear the agent's memory before exploration. This forces the agent to 'refresh' its belief state after an action.
 	 */
-	private void clearAgentMemory (LabRecruitsTestAgent testAgent, boolean clearWom, boolean clearVisistedNodes) {
+	private static void clearAgentMemory (LabRecruitsTestAgent testAgent, boolean clearWom, boolean clearVisistedNodes) {
 		//System.out.println("Clearing agent's memeory of old observations");
 		if (clearWom) {
 			testAgent.getState().worldmodel.elements.clear();
@@ -703,6 +740,8 @@ public class LabRecruitsRLMultiAgentEnvironment implements Environment {
 				" Goal status: " + (subGoal != null?subGoal.getStatus().toString():" NULL"));
 		//DPrint.ul("Health penalty = "+this.healthpenalty);
 		
+		// register the action performed for later serialization to test case
+		RLActionToTestCaseEncoder.getInstance().registrAction(action, oldState, currentState, testAgentActive);
 		
 		// each action consumes budget
 		updateCycles++;					
@@ -916,7 +955,7 @@ public class LabRecruitsRLMultiAgentEnvironment implements Environment {
 	 * and sleep time could be necessary.
 	 * @param goal
 	 */
-	private void doAction (GoalStructure goal, int tickbugdet, LabRecruitsTestAgent testAgent) {
+	public static void doAction (GoalStructure goal, int tickbugdet, LabRecruitsTestAgent testAgent) {
 		//System.out.println("-----------------------------------------------------------------------------");
 		System.out.println("--------------"+testAgent.getId() + "---------In doAction()-----------tickbudget : "+ tickbugdet);
 		testAgent.setGoal(goal);
@@ -930,8 +969,9 @@ public class LabRecruitsRLMultiAgentEnvironment implements Environment {
 				e.printStackTrace();
 			}
 			testAgent.update();
-		//	DPrint.ul("*** STEP :" + testAgent.getState().worldmodel.timestamp + ", "
-		  //             + testAgent.getState().id + " @" + testAgent.getState().worldmodel.position) ;
+//			DPrint.ul("*** STEP :" + testAgent.getState().worldmodel.timestamp + ", "
+//		               + testAgent.getState().id + " @" + testAgent.getState().worldmodel.position) ;
+			
 			tickCounter++;
 		}
 		
@@ -954,6 +994,31 @@ public class LabRecruitsRLMultiAgentEnvironment implements Environment {
 		boolean isFinal = isFinal(currentState) || updateCycles >= MAX_CYCLES || AgentDeadFlag==true;
 		if (isFinal) {
 			System.out.println("Achieve goal, Ending episode");
+			
+			// save collected trace data
+			if (dataCollectionEnabled) {
+				String traceFile = RlbtMultiAgentMain.outputDir + File.separator + "location_trace" + traceCounter++ + ".csv";
+				try {
+					testAgentActive.getTestDataCollector()
+					 .saveTestAgentScalarsTraceAsCSV(testAgentActive.getId(), traceFile);
+				} catch (IOException e) {
+					// TODO Auto-generated catch block
+					e.printStackTrace();
+				}
+			}
+			
+			//handle concretization of actions to test case
+			String actionsFile = RlbtMultiAgentMain.outputDir + File.separator + "actions.csv";
+			try {
+				RLActionToTestCaseEncoder.getInstance().saveActionsToFile(testAgentActive, actionsFile);
+//				List<GoalStructure> goals = RLActionToTestCaseEncoder.getInstance().serliazeActionsToGoals(testAgentActive);
+//				for (GoalStructure goal : goals) {
+//					System.out.println(goal.toString());
+//				}
+			} catch (IOException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
 		}
 		return isFinal;
 	}

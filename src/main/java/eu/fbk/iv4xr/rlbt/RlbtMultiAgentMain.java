@@ -6,7 +6,9 @@ package eu.fbk.iv4xr.rlbt;
 
 import java.io.File;
 import java.io.FileNotFoundException;
+import java.io.IOException;
 import java.io.PrintStream;
+import java.nio.charset.Charset;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -17,20 +19,31 @@ import org.apache.commons.cli.HelpFormatter;
 import org.apache.commons.cli.Option;
 import org.apache.commons.cli.Options;
 import org.apache.commons.cli.ParseException;
+import org.apache.commons.io.FileUtils;
 
+import agents.LabRecruitsTestAgent;
+import agents.TestSettings;
 import burlap.behavior.singleagent.Episode;
 import burlap.mdp.auxiliary.DomainGenerator;
 import burlap.mdp.singleagent.SADomain;
+import environments.LabRecruitsConfig;
+import environments.LabRecruitsEnvironment;
 import eu.fbk.iv4xr.rlbt.RlbtMain.BurlapAlgorithm;
 import eu.fbk.iv4xr.rlbt.configuration.BurlapConfiguration;
+import eu.fbk.iv4xr.rlbt.configuration.Configuration;
 import eu.fbk.iv4xr.rlbt.configuration.LRConfiguration;
 import eu.fbk.iv4xr.rlbt.configuration.LRMultiAgentConfiguration;
 import eu.fbk.iv4xr.rlbt.labrecruits.LabRecruitsDomainGenerator;
 import eu.fbk.iv4xr.rlbt.labrecruits.LabRecruitsRLEnvironment;
 import eu.fbk.iv4xr.rlbt.labrecruits.LabRecruitsRLMultiAgentEnvironment;
+import eu.fbk.iv4xr.rlbt.labrecruits.RLActionToTestCaseEncoder;
 import eu.fbk.iv4xr.rlbt.labrecruits.RlbtHashableStateFactory;
 import eu.fbk.iv4xr.rlbt.labrecruits.distance.JaccardDistance;
 import eu.fbk.iv4xr.rlbt.utils.SerializationUtil;
+import eu.iv4xr.framework.mainConcepts.TestDataCollector;
+import game.LabRecruitsTestServer;
+import nl.uu.cs.aplib.mainConcepts.GoalStructure;
+import world.BeliefState;
 
 /**
  * @author kifetew
@@ -58,7 +71,7 @@ public class RlbtMultiAgentMain{
 	static String lrmultiagentConfigFile = currentDir+"/src/test/resources/configurations/lrLevelMultiAgent.config"; //multi-agent configuration 
 
 	// root folder for writing output
-	static String outputDir = currentDir + File.separator + "rlbt-files"+ File.separator + "results" + File.separator + System.nanoTime();
+	public static String outputDir = currentDir + File.separator + "rlbt-files"+ File.separator + "results" + File.separator + System.nanoTime();
 	
 	// Configurations
 	static BurlapConfiguration burlapConfiguration = new BurlapConfiguration();
@@ -407,6 +420,88 @@ public class RlbtMultiAgentMain{
 		
 	}
 
+	
+	
+	private void executeTests (CommandLine line, Options options) throws InterruptedException, IOException {
+		System.out.println("=========================================================================================");
+		System.out.println("----------------Executing previously serialized tests----------------");
+		
+		// get user parameters
+		String actionsFile = line.getOptionValue("actionsFile");
+		
+		String agentNameProp = "labrecruits.agent_id";
+		Configuration sutConfig;
+		boolean success = true;
+		if (line.hasOption("singleAgentTestExecutionMode")) {
+			sutConfig = lrConfiguration;
+		}else {
+			// try multi agent
+			sutConfig = lrmultiagentConfiguration;
+			agentNameProp = "labrecruits.agentactive_id";
+		}
+		
+		if (!success) {
+			String msg = "Please provide a valid SUT configuration file that was used during the training phase. "
+					+ "It should be in the rlbt-files folder generated after the training phase.";
+			throw new RuntimeException(msg);
+		}
+		
+		// settings we need to start test execution
+		String labRecruitsLevel = (String) sutConfig.getParameterValue("labrecruits.level_name");
+		String labRecruitsLevelFolder =  (String) sutConfig.getParameterValue("labrecruits.level_folder");
+		String agentName =  (String) sutConfig.getParameterValue(agentNameProp);
+		int maxCyclesPerAction =  (Integer) sutConfig.getParameterValue("labrecruits.max_ticks_per_action");
+		
+		// start the LR test server
+		TestSettings.USE_GRAPHICS = true ;
+	    String labRecruitesExeRootDir = (String) sutConfig.getParameterValue("labrecruits.execution_folder"); // System.getProperty("user.dir") ;
+	    LabRecruitsTestServer labRecruitsTestServer = TestSettings.start_LabRecruitsTestServer(labRecruitesExeRootDir) ;
+	    labRecruitsTestServer.waitForGameToLoad();
+	   
+	    // set up the environment
+		LabRecruitsConfig gameConfig = new LabRecruitsConfig(labRecruitsLevel,labRecruitsLevelFolder);
+		float viewDistance = 20;
+		gameConfig.replaceAgentViewDistance(viewDistance);
+		gameConfig.agent_speed = 0.13f;
+		gameConfig.host = "localhost"; // "192.168.29.120";
+		LabRecruitsEnvironment labRecruitsAgentEnvironment = new LabRecruitsEnvironment(gameConfig);
+		labRecruitsAgentEnvironment.startSimulation();
+	    
+	    // set up the agent
+	    LabRecruitsTestAgent testAgent = new LabRecruitsTestAgent(agentName) // matches the ID in the CSV file
+				. attachState(new BeliefState())
+				. attachEnvironment(labRecruitsAgentEnvironment);
+
+	    // attach data collector (verdicts)
+		var dataCollector = new TestDataCollector();
+		testAgent.setTestDataCollector(dataCollector);
+		
+		// deserialize action logs to GoalStructures
+		String actions = FileUtils.readFileToString(new File(actionsFile ), Charset.defaultCharset());
+		List<GoalStructure> goals = RLActionToTestCaseEncoder.serializeActionsToGoals(testAgent, actions);
+		
+		// execute each GoalStructure through the agent
+		for (GoalStructure goal : goals) {
+			LabRecruitsRLMultiAgentEnvironment.doAction(goal, maxCyclesPerAction, testAgent);
+//			goal.printGoalStructureStatus();
+		}
+		
+		// collect verdicts
+//		dataCollector.save(agentName, actionsFile + ".coverage");
+		
+		
+		System.out.println("Failed: " + dataCollector.getNumberOfFailVerdictsSeen());
+		System.out.println("Passed: " + dataCollector.getNumberOfPassVerdictsSeen());
+		System.out.println("Inconclusive: " + dataCollector.getNumberOfUndecidedVerdictsSeen());
+		
+		//shut down env and test server
+		labRecruitsAgentEnvironment.close();
+		if(labRecruitsTestServer != null) { 
+			labRecruitsTestServer.close();
+		}
+	}
+	
+	
 	/**
 	 * Save episode summary
 	 */
@@ -506,10 +601,31 @@ public class RlbtMultiAgentMain{
 				.desc("Execute a random single learning agent")
 				.build();
 		
+		Option actionsFile  = Option.builder("actionsFile")
+				.hasArg(true)
+				.required(false)
+				.type(String.class)
+				.desc("CSV file containing the actions to be executed as tests")
+				.build();
+		
 		Option multiagentTrainingMode = Option.builder("multiagentTrainingMode")
 				.required(false)
 				.type(String.class)
 				.desc("Execute multi-agent training phase")
+				.build();
+		
+		Option singleAgentTestExecutionMode = Option.builder("singleAgentTestExecutionMode")
+				.hasArg(false)
+				.required(false)
+				.type(String.class)
+				.desc("Execute tests serialized from a previous single-agent run. Need to provide 'actionsFile' and 'sutConfig' parameters!")
+				.build();
+		
+		Option multiAgentTestExecutionMode = Option.builder("multiAgentTestExecutionMode")
+				.hasArg(false)
+				.required(false)
+				.type(String.class)
+				.desc("Execute tests serialized from a previous multi-agent run. Need to provide 'actionsFile' and 'sutConfig' parameters!")
 				.build();
 		
 		options.addOption(help);
@@ -519,6 +635,9 @@ public class RlbtMultiAgentMain{
 		options.addOption(testingMode);
 		options.addOption(randomMode);
 		options.addOption(multiagentTrainingMode);
+		options.addOption(singleAgentTestExecutionMode);
+		options.addOption(multiAgentTestExecutionMode);
+		options.addOption(actionsFile);
 		
 		return options;
 	}
@@ -537,7 +656,8 @@ public class RlbtMultiAgentMain{
         
         // has the SUT config file argument been passed?
         if( line.hasOption( "sutConfig" ) ) {
-        	if( line.hasOption( "multiagentTrainingMode" ) )
+        	if( line.hasOption( "multiagentTrainingMode" ) 
+        			|| line.hasOption("multiAgentTestExecutionMode"))
         		lrmultiagentConfigFile = line.getOptionValue( "sutConfig" );
         	else
         		lrConfigFile = line.getOptionValue( "sutConfig" );
@@ -554,7 +674,8 @@ public class RlbtMultiAgentMain{
         // update parameters
         boolean updateParameters = false;
 		updateParameters = burlapConfiguration.updateParameters(burlapConfigFile);	
-		if( line.hasOption( "multiagentTrainingMode" ) )
+		if( line.hasOption( "multiagentTrainingMode" ) 
+				|| line.hasOption("multiAgentTestExecutionMode"))
 			updateParameters = lrmultiagentConfiguration.updateParameters(lrmultiagentConfigFile);
 		else
 			updateParameters = lrConfiguration.updateParameters(lrConfigFile);
@@ -567,10 +688,10 @@ public class RlbtMultiAgentMain{
 	/**
 	 * @param args
 	 * @throws InterruptedException 
-	 * @throws FileNotFoundException 
+	 * @throws IOException 
 	 */
 
-	public static void main(String[] args) throws InterruptedException, FileNotFoundException {
+	public static void main(String[] args) throws InterruptedException, IOException {
 		RlbtMultiAgentMain main = new RlbtMultiAgentMain ();
 		Options options = main.buildCommandLineOptions() ;
 	    
@@ -601,6 +722,9 @@ public class RlbtMultiAgentMain{
 						main.executeTraining(line, options);
 					}else if (line.hasOption("multiagentTrainingMode")) {
 						main.executeMultiAgentTraining(line, options);
+					}else if (line.hasOption("singleAgentTestExecutionMode")
+							|| line.hasOption("multiAgentTestExecutionMode")) {
+						main.executeTests (line, options);
 					}else {
 						printCommandLineHelp(options);
 						System.exit(1);

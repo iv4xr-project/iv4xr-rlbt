@@ -59,4 +59,15 @@ public class LabRecruitsState extends GenericOOState implements Serializable {
 		return buffer.toString();
 	}
 
+	
+	public LabEntity getLabEntityById(String entityId) {
+		if (objectsMap.containsKey(entityId)) {
+			LabRecruitsEntityObject object = (LabRecruitsEntityObject) objectsMap.get(entityId);
+			return (LabEntity) object.labRecruitsEntity;
+		}else {
+			return null;
+		}
+		
+	}
+	
 }
