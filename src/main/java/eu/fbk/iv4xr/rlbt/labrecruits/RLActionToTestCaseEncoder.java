@@ -26,6 +26,7 @@ import agents.LabRecruitsTestAgent;
 import burlap.mdp.core.action.Action;
 import burlap.mdp.core.oo.state.generic.GenericOOState;
 import burlap.mdp.core.state.State;
+import burlap.mdp.core.state.StateUtilities;
 import eu.fbk.iv4xr.rlbt.utils.GoalLib;
 import eu.iv4xr.framework.mainConcepts.TestAgent;
 import eu.iv4xr.framework.mainConcepts.WorldEntity;
@@ -46,6 +47,8 @@ public class RLActionToTestCaseEncoder {
 	private int episode = 1; // for now all actions would be part of a single episode
 	private Map<String, StringBuffer> buffer;
 	
+	private Map<String, StringBuffer> dotBuffer;
+	
 	
 	private static final String ENTRY_ID = "id";
 	private static final String EPISODE = "episode";
@@ -59,6 +62,9 @@ public class RLActionToTestCaseEncoder {
 			ENTRY_ID, EPISODE, ENTITY_ID, ENTITY_TYPE, ENTITY_PROPERTY_NAME, 
 			ENTITY_PROPERTY_VALUE, GOAL_STATUS, System.lineSeparator());
 	
+	private static final String DOT_HEADER = "digraph g{" + System.lineSeparator();
+	private static final String DOT_FOOTER = System.lineSeparator() + "}";
+	
 	private static RLActionToTestCaseEncoder instance = null;
 	
 	/**
@@ -67,6 +73,7 @@ public class RLActionToTestCaseEncoder {
 	private RLActionToTestCaseEncoder() {
 		id = 1;
 		buffer = new HashMap<>();
+		dotBuffer = new HashMap<>();
 	}
 
 	
@@ -94,11 +101,22 @@ public class RLActionToTestCaseEncoder {
 		if (!buffer.containsKey(agent.getId())) {
 			buffer.put(agent.getId(), new StringBuffer());
 			buffer.get(agent.getId()).append(HEADER);
+			
+			dotBuffer.put(agent.getId(), new StringBuffer());
+			dotBuffer.get(agent.getId()).append(DOT_HEADER);
 		}
 		buffer.get(agent.getId()).append(String.format("%s,%s,%s,%s,%s,%s,%s,%s", 
 				id, episode, entityId, entityType, 
 				propertyNameValue.getLeft(), propertyNameValue.getRight(), 
 				actionStatus, System.lineSeparator()));
+		
+		dotBuffer.get(agent.getId())
+				.append("\"" + StateUtilities.stateToString(oldState) + "\"")
+				.append(" -> ")
+				.append("\"" + StateUtilities.stateToString(newState)+ "\"")
+				.append(" [label = \"" + action.toString() + "\" ];")
+				.append(System.lineSeparator());
+		
 		id++;
 	}
 	
@@ -116,9 +134,25 @@ public class RLActionToTestCaseEncoder {
 	public boolean saveActionsToFile (TestAgent agent, String fileName) throws IOException {
 		boolean success = true;
 		FileUtils.writeStringToFile(new File(fileName), buffer.get(agent.getId()).toString(), Charset.defaultCharset());
+		
+		//close the dot bracket
+		dotBuffer.get(agent.getId()).append(DOT_FOOTER);
+		FileUtils.writeStringToFile(new File(fileName + ".dot"), dotBuffer.get(agent.getId()).toString(), Charset.defaultCharset());
 		return success;
 	}
 	
+	/**
+	 * Get the buffer from all agents, useful when RLbT is called from an API, e.g., iv4xr-framework
+	 * @return
+	 * @throws IOException 
+	 */
+	public List<GoalStructure> serializeActionsToGenericGoals (TestAgent agent) throws IOException {
+		List<GoalStructure> allGoals = new ArrayList<>();
+		for (StringBuffer buf : buffer.values()) {
+			allGoals.addAll(serializeActionsToGoals(agent, buf.toString()));
+		}
+		return allGoals;
+	}
 	
 	public List<GoalStructure> serliazeActionsToGoals(TestAgent agent) throws IOException{
 		List<GoalStructure> goals = serializeActionsToGoals(agent, buffer.get(agent.getId()).toString());

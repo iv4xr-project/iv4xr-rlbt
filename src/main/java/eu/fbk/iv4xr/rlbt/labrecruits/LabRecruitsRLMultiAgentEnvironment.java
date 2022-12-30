@@ -722,6 +722,9 @@ public class LabRecruitsRLMultiAgentEnvironment implements Environment {
 					double rewardfunc= UpdateGoalList(currentState);
 					//UpdateConnectionCoverage((LabRecruitsState)oldState,currentState,action);
 				}
+				
+				// register the action performed for later serialization to test case
+				RLActionToTestCaseEncoder.getInstance().registrAction(action, oldState, currentState, testAgentActive);
 			}
 			else 
 			{
@@ -740,8 +743,6 @@ public class LabRecruitsRLMultiAgentEnvironment implements Environment {
 				" Goal status: " + (subGoal != null?subGoal.getStatus().toString():" NULL"));
 		//DPrint.ul("Health penalty = "+this.healthpenalty);
 		
-		// register the action performed for later serialization to test case
-		RLActionToTestCaseEncoder.getInstance().registrAction(action, oldState, currentState, testAgentActive);
 		
 		// each action consumes budget
 		updateCycles++;					
