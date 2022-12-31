@@ -1207,7 +1207,7 @@ public class LabRecruitsRLMultiAgentEnvironment implements Environment {
 	}/*end of the function*/
 	
 	/*globar coverage after each episode*/
-	public void GlobalCoveragePerEpisode() {
+	public double GlobalCoveragePerEpisode() {
 		double globalcov=0;
 		if (GlobalEntityList.size()>0) {
 			globalcov = ((double)GlobalEntityList.size()/entityList.size())*100;
@@ -1219,6 +1219,7 @@ public class LabRecruitsRLMultiAgentEnvironment implements Environment {
 				System.out.println("Entity =  "+k);
 				}
 			}
+		return globalcov;
 		}/*End of function*/
 	
 }
