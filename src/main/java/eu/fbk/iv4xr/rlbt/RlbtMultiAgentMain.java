@@ -71,8 +71,8 @@ public class RlbtMultiAgentMain{
 	static String lrmultiagentConfigFile = currentDir+"/src/test/resources/configurations/lrLevelMultiAgent.config"; //multi-agent configuration 
 
 	// root folder for writing output
-	public static String outputDir = currentDir + File.separator + "rlbt-files"+ File.separator + "results" + File.separator + System.nanoTime();
-	
+	public static String outputDir = currentDir + File.separator + "rlbt-files"+ File.separator + "results" + File.separator;// + System.nanoTime();
+	public static long systemtime=  System.nanoTime();
 	// Configurations
 	static BurlapConfiguration burlapConfiguration = new BurlapConfiguration();
 	static LRConfiguration lrConfiguration = new LRConfiguration();  // for single agent architecture
@@ -90,6 +90,7 @@ public class RlbtMultiAgentMain{
 		int numEpisodes = (int)burlapConfiguration.getParameterValue("burlap.num_of_episodes");
 		
 		String rewardtp = (String)lrConfiguration.getParameterValue("labrecruits.rewardtype");
+
 		if (rewardtp.equalsIgnoreCase("CuriousityDriven")) {
 			double epsilonval = (double)burlapConfiguration.getParameterValue("burlap.qlearning.epsilonval");
 			double calculatedDecayVal = (double)(epsilonval/numEpisodes);
@@ -114,6 +115,7 @@ public class RlbtMultiAgentMain{
 		
 		List<Episode> episodes = new ArrayList<Episode>(numEpisodes);	//list to store results from Q-learning episodes
 		List<Double> episodeCoverage =  new ArrayList<Double>(numEpisodes);
+		List<Double> episodeGlobalCoverage =  new ArrayList<Double>(numEpisodes);
 		List<Long> episodeTime =  new ArrayList<Long>(numEpisodes);
 
 		int maxActionsPerEpisode = (int)lrConfiguration.getParameterValue("labrecruits.max_actions_per_episode");
@@ -131,18 +133,21 @@ public class RlbtMultiAgentMain{
 			episodeCoverage.add(episodecov);
 			episodeTime.add(estimatedTime);
 			
-			labRecruitsRlEnvironment.GlobalCoveragePerEpisode();
+			double globalcov = labRecruitsRlEnvironment.GlobalCoveragePerEpisode();
+			episodeGlobalCoverage.add(globalcov);
+			
 			labRecruitsRlEnvironment.resetEnvironment();  /*reset environment*/
 		}
 		
 		labRecruitsRlEnvironment.CalculateGlobalCoverageAfterTraining();
 		/*------------Save------------------------*/
 		agent.printFinalQtable(System.out);
+		
 		String qtableOutputFile = outputDir + File.separator + "qtable.ser"; // (String)burlapConfiguration.getParameterValue("burlap.qlearning.out_qtable");
 		agent.serializeQTable(qtableOutputFile);
 		agent.printFinalQtable(new PrintStream(qtableOutputFile + ".txt"));
 		String episodesummaryfile = outputDir + File.separator + "episodeSummary.txt"; 
-		SaveEpisodeSummary(episodes, episodesummaryfile, episodeCoverage, episodeTime);  // store episode summary (number of actions and reward per episode)
+		SaveEpisodeSummary(episodes, episodesummaryfile, episodeCoverage, episodeGlobalCoverage, episodeTime);  // store episode summary (number of actions and reward per episode)
 				
 		String episodesBaseName = outputDir + File.separator + "episode";
 		SerializationUtil.serializeEpisodes(episodes, episodesBaseName );
@@ -191,6 +196,7 @@ public class RlbtMultiAgentMain{
 		
 		List<Episode> episodes = new ArrayList<Episode>(numEpisodes);	//list to store results from Q-learning episodes
 		List<Double> episodeCoverage =  new ArrayList<Double>(numEpisodes);
+		List<Double> episodeGlobalCoverage =  new ArrayList<Double>(numEpisodes);
 		List<Long> episodeTime =  new ArrayList<Long>(numEpisodes);
 
 		//long startTime = System.currentTimeMillis();
@@ -210,7 +216,8 @@ public class RlbtMultiAgentMain{
 			episodeCoverage.add(episodecov);
 			episodeTime.add(estimatedTime);
 			
-			labRecruitsRlEnvironment.GlobalCoveragePerEpisode();			
+			double globcov = labRecruitsRlEnvironment.GlobalCoveragePerEpisode();
+			episodeGlobalCoverage.add(globcov);
 			labRecruitsRlEnvironment.resetEnvironment();  /*reset environment*/
 		}
 		
@@ -221,7 +228,7 @@ public class RlbtMultiAgentMain{
 		agent.serializeQTable(qtableOutputFile);
 		agent.printFinalQtable(new PrintStream(qtableOutputFile + ".txt"));
 		String episodesummaryfile = outputDir + File.separator + "episodeSummary.txt"; 
-		SaveEpisodeSummary(episodes, episodesummaryfile, episodeCoverage, episodeTime);  // store episode summary (number of actions and reward per episode)
+		SaveEpisodeSummary(episodes, episodesummaryfile, episodeCoverage, episodeGlobalCoverage,episodeTime);  // store episode summary (number of actions and reward per episode)
 		
 		String episodesBaseName = outputDir + File.separator + "episode";
 		SerializationUtil.serializeEpisodes(episodes, episodesBaseName );
@@ -327,6 +334,7 @@ public class RlbtMultiAgentMain{
 		int numEpisodes = (int)burlapConfiguration.getParameterValue("burlap.num_of_episodes");
 		
 		String rewardtp = (String)lrConfiguration.getParameterValue("labrecruits.rewardtype");
+
 		if (rewardtp.equalsIgnoreCase("CuriousityDriven")) {
 			double epsilonval = (double)burlapConfiguration.getParameterValue("burlap.qlearning.epsilonval");
 			double calculatedDecayVal = (double)(epsilonval/numEpisodes);
@@ -352,6 +360,7 @@ public class RlbtMultiAgentMain{
 		
 		List<Episode> episodes = new ArrayList<Episode>(numEpisodes);	//list to store results from Q-learning episodes
 		List<Double> episodeCoverage =  new ArrayList<Double>(numEpisodes);
+		List<Double> episodeGlobalCoverage =  new ArrayList<Double>(numEpisodes);
 		List<Long> episodeTime =  new ArrayList<Long>(numEpisodes);
 
 		//long startTime = System.currentTimeMillis();
@@ -375,7 +384,10 @@ public class RlbtMultiAgentMain{
 			System.out.println("End of episode - Print goal entities explored by active agent");
 			labRecruitsRlMultiAgentEnv.printGoalEntities();
 			System.out.println("Coverage stat till episode "+(i+1));
-			labRecruitsRlMultiAgentEnv.GlobalCoveragePerEpisode();
+			
+			double globcov = labRecruitsRlMultiAgentEnv.GlobalCoveragePerEpisode();
+			episodeGlobalCoverage.add(globcov);
+			
 			labRecruitsRlMultiAgentEnv.resetEnvironment();  //reset environment
 		}
 
@@ -385,11 +397,13 @@ public class RlbtMultiAgentMain{
 		//long estimatedTime = System.currentTimeMillis() - startTime;
 		//System.out.println("Time - Training : "+estimatedTime);
 		agent.printFinalQtable(System.out);
+		
 		String qtableOutputFile = outputDir + File.separator + "qtable.ser"; // (String)burlapConfiguration.getParameterValue("burlap.qlearning.out_qtable");
 		agent.serializeQTable(qtableOutputFile);
 		agent.printFinalQtable(new PrintStream(qtableOutputFile + ".txt"));
+		
 		String episodesummaryfile = outputDir + File.separator + "episodeSummary.txt"; 
-		SaveEpisodeSummary(episodes, episodesummaryfile, episodeCoverage, episodeTime);  // store episode summary (number of actions and reward per episode)
+		SaveEpisodeSummary(episodes, episodesummaryfile, episodeCoverage, episodeGlobalCoverage, episodeTime);  // store episode summary (number of actions and reward per episode)
 				
 		String episodesBaseName = outputDir + File.separator + "episode";
 		SerializationUtil.serializeEpisodes(episodes, episodesBaseName );
@@ -505,14 +519,17 @@ public class RlbtMultiAgentMain{
 	/**
 	 * Save episode summary
 	 */
-	private static void SaveEpisodeSummary(List<Episode> episodes, String outfile, List<Double> episodeCoverage, List<Long> episodeTime) throws FileNotFoundException {
+	private static void SaveEpisodeSummary(List<Episode> episodes, String outfile, List<Double> episodeCoverage, List<Double> episodeGlobalCoverage, List<Long> episodeTime) throws FileNotFoundException {
 		PrintStream ps =  new PrintStream(outfile);
 		/*print number of actions taken per episode*/
+		ps.print("Action Seq = ");
 		for (int i=0;i<episodes.size();i++) {
 			ps.print(episodes.get(i).actionSequence.size()+",");
 		}
 		ps.println();
+		
 		/*print reward summary per episode*/
+		ps.print("Reward Seq = ");
 		for (int i=0;i<episodes.size();i++) {
 			double sumreward=0;
 			for (int j=0;j<episodes.get(i).rewardSequence.size();j++) {
@@ -521,12 +538,25 @@ public class RlbtMultiAgentMain{
 			ps.print(sumreward+", ");
 		}
 		ps.println();
+		
 		/*print coverage per episode*/
+		ps.print("EpisodeCoverage = ");
 		for (int i=0;i<episodes.size();i++) {
 			ps.print(episodeCoverage.get(i)+",");
 		}
 		ps.println();
 		
+		
+		
+		/*print global coverage per episode*/
+		ps.print("GlobalCoverage = ");
+		for (int i=0;i<episodes.size();i++) {
+			ps.print(episodeGlobalCoverage.get(i)+",");
+		}
+		ps.println();
+		
+		/*print learning time per episode*/
+		ps.print("Time = ");
 		for (int i=0;i<episodes.size();i++) {
 			ps.print(episodeTime.get(i)+",");
 		}
@@ -711,8 +741,22 @@ public class RlbtMultiAgentMain{
 	        boolean loadAndSetParameter = main.loadAndSetParameter(line,options);
 	        // choose testing or training
 	        if (loadAndSetParameter) {
-	        	// create output folder
+	        	String trainingmode ="";
+	        	String levelname="";
+	        	if (line.hasOption("trainingMode")) {
+	        		trainingmode="single";
+	        		levelname = (String)lrConfiguration.getParameterValue("labrecruits.level_name");		    		
+	        	}
+	        	if (line.hasOption("multiagentTrainingMode")) {
+	        		trainingmode="multi";
+	        		levelname = (String)lrmultiagentConfiguration.getParameterValue("labrecruits.level_name");
+	        	}
+	        	
+	    		String path = levelname+ File.separator +trainingmode+ File.separator + systemtime;
+	    		outputDir=outputDir +path;
+	    		// create output folder
 	        	File reportDir = new File (outputDir);
+	        	
 	        	if (reportDir.exists() || reportDir.mkdirs()) {
 					if (line.hasOption("trainingMode")) {
 						main.executeTraining(line, options);
@@ -736,6 +780,7 @@ public class RlbtMultiAgentMain{
 	        		System.err.println("Quitting because unable to create output directory: " + outputDir);
 	        		System.exit(1);
 	        	}
+	        	
 			}else {
 				System.err.println( "Fail to load parameter files. Quitting!");
 				System.exit(1);
