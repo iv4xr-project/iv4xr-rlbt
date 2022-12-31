@@ -1050,7 +1050,7 @@ public class LabRecruitsRLEnvironment implements Environment {
 	}/*end of the function*/
 	
 	/*globar coverage after each episode*/
-	public void GlobalCoveragePerEpisode() {
+	public double GlobalCoveragePerEpisode() {
 		double globalcov=0;
 		if (GlobalEntityList.size()>0) {
 			globalcov = ((double)GlobalEntityList.size()/entityList.size())*100;
@@ -1062,6 +1062,6 @@ public class LabRecruitsRLEnvironment implements Environment {
 				System.out.println("Entity =  "+k);
 				}
 			}
-		}/*End of function*/
-	
+		return globalcov;  //return global coverage after finishing an episode
+		}/*End of function*/	
 }
