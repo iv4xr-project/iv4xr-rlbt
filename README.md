@@ -14,7 +14,6 @@ where:
 
 ## RLbT mode
 When RLbT is run in training mode, the agent plays for several episode and output a Q-table. RlbT supports both single and multi-agent training mode.
-Currently it supports 2 agents in multi-agent mode.
  
 When RLbT is run in testing mode, the agent loads a learned Q-table and tests it on the SUT.
 
