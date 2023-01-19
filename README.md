@@ -69,3 +69,10 @@ b) For multi-agent training mode - Available parameters are:
 
 ## Requirements for RLbT
 The tool RLbT requires at least Java 11.
+
+## References 
+<a id="1">[1]</a> 
+R. Ferdous, F. M. Kifetew, D. Prandi, A. Susi.
+*Towards Agent-Based Testing of 3D Games using Reinforcement Learning.*
+37th IEEE/ACM International Conference on Automated Software Engineering 2022. 
+[doi:[10.1007/978-3-030-88106-1_5](https://doi.org/10.1145/3551349.3560507)](https://dl.acm.org/doi/abs/10.1145/3551349.3560507). 
