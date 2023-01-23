@@ -64,12 +64,25 @@ import numpy as np
 import math
 import os
 from pathlib import Path
+import csv
 import pprint
 import statistics
 import scipy.stats as scistats
-from mygraphlib import loadCSV
+#from mygraphlib import loadCSV
+
+
+def loadCSV(csvfile):
+   """ A help function to read a csv-file. """
+   # need to use a correct character encoding.... latin-1 does it
+   with open(csvfile, encoding='latin-1') as file:
+      content = csv.DictReader(file, delimiter=',')
+      rows = []
+      for row in content: rows.append(row)
+      return rows
+
 
 def mkHeatMap(dataset,
+        base_map_dataset,
         selectedProperties,
         xLabel:str,
         yLabel:str,
@@ -118,9 +131,20 @@ def mkHeatMap(dataset,
     H = math.ceil(scale*height)
     W = math.ceil(scale*width)
     map = np.zeros((H,W))
+    base_map = np.zeros((H,W))
     for y in range(0,H):
-      for x in range(0,W):
-          map[y,x] = 0
+        for x in range(0,W):
+            map[y, x] = 0
+            base_map[y, x] = 0
+
+    # prepare base map to dataset
+    for p in base_map_dataset:
+        x = round(scale * float(p[xLabel]))
+        y = round(scale * float(p[yLabel]))
+
+        # combine the value of the properties by summing them:
+        values = [float(p[propName]) for propName in selectedProperties]
+        base_map[y, x] = min(combineFunction(base_map[y, x], values), maxvalue)  # capping the val at max-value
 
     for r in dataset:
         x = round(scale*float(r[xLabel]))
@@ -133,20 +157,23 @@ def mkHeatMap(dataset,
     # converting 0 to white:
     white = 1.25*maxvalue
     for y in range(0,H):
-      for x in range(0,W):
-          if map[y,x] == 0 : map[y,x] = white
+        for x in range(0,W):
+            if map[y, x] == 0 : map[y,x] = white
+            if base_map[y, x] == 0: base_map[y, x] = white
 
     ax = plt.gca()
     ax.xaxis.set_visible(False)
     ax.yaxis.set_visible(False)
     # colormap, see: https://matplotlib.org/stable/tutorials/colors/colormaps.html
-    plt.imshow(map, cmap='hot', origin='lower', interpolation='nearest', vmax=white)
+    plt.imshow(base_map, cmap='hot', origin='lower', interpolation='nearest', vmax=white)
+    plt.imshow(map, cmap='hot', origin='lower', interpolation='nearest', vmax=white, alpha=0.8)
     #plt.imshow(map, cmap='hot', origin='lower', interpolation='bilinear')
 
-    plt.title("heat map")
+    plt.title("Spatial Coverage")
     #plt.legend()
     if saveToFile : plt.savefig(outputfile)
     else : plt.show()
+
 
 def visitCountCombineFunction(v,newvalues):
     '''
@@ -154,11 +181,13 @@ def visitCountCombineFunction(v,newvalues):
     '''
     return v + 1
 
+
 def maxSumCombineFunction(v,newvalues):
     '''
     A combine function that sums new-values, then maximizes it with the current cell.
     '''
     return max(v,sum(newvalues))
+
 
 class HeatmapCommandLine:
     """
@@ -178,15 +207,17 @@ class HeatmapCommandLine:
         self.combineFunction1 = visitCountCombineFunction
         self.combineFunction2 = maxSumCombineFunction
 
+
     def parseCommandLineArgs(self):
         """ A help function to parse the command-line arguments of this script. """
 
         parser = OptionParser("usage: %prog [options] arg1 arg2 (each arg is a property-name/column-name in the inputfile)")
         parser.add_option("-i", dest="inputFile",  help="input csv-file (comma separated)")
+        parser.add_option("--basemap", dest="baseMapFile", help="input csv-file (comma separated) of the base level map")
         parser.add_option("--dir", dest="inputDir",  help="if specified, data will be read from all csv-files in this dir")
         parser.add_option("-o", dest="outputFile", default="hmap", help="output file (png); default is hmap.png")
-        parser.add_option("--width", dest="mapWidth" , help="the width of the heatmap")
-        parser.add_option("--height", dest="mapHeight", help="the height of the heatmap")
+        parser.add_option("--width", dest="mapWidth", default="100", help="the width of the heatmap")
+        parser.add_option("--height", dest="mapHeight", default="100", help="the height of the heatmap")
         parser.add_option("--scale",  dest="tileScale", default="1",    help="the tile-scale of the heatmap")
         parser.add_option("--maxval", dest="mapValMax", default="100", help="maximum heat value in the heatmap")
         parser.add_option("--xname", dest="xName", default="x", help="label-name of x in the csv-file; default is \"x\"")
@@ -212,8 +243,15 @@ class HeatmapCommandLine:
         cmd = self.parseCommandLineArgs()
         scriptOptions = cmd["scriptOptions"]
 
+        if scriptOptions.baseMapFile is None:
+            print('** Base Map file required')
+            base_map_dataset = []
+        else:
+            print('** Base Map file: ', scriptOptions.baseMapFile)
+            base_map_dataset = loadCSV(scriptOptions.baseMapFile)
+
         #print(content)
-        if scriptOptions.inputDir == None :
+        if scriptOptions.inputDir is None :
             print('** Input file: ', scriptOptions.inputFile)
             dataset = loadCSV(scriptOptions.inputFile)
         else:
@@ -241,6 +279,7 @@ class HeatmapCommandLine:
             combineFunction = self.combineFunction2  # by default it is maxSumCombineFunction
 
         mkHeatMap(dataset,
+                base_map_dataset,
                 selectedProperties,
                 scriptOptions.xName,
                 scriptOptions.yName,
