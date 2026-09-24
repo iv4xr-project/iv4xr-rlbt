@@ -1,7 +1,7 @@
 [submodule "sut/minecraft/mineflayer-testbench"]
 	path = sut/minecraft/mineflayer-testbench
-	url = https://github.com/niftyduck/MineflayerTestbench
-	branch = rlbt
+	url = https://github.com/se-fbk/MineflayerTestbench
+	branch = main
 [submodule "sut/minecraft/minecraftlib"]
 	path = sut/minecraft/minecraftlib
 	url = https://github.com/niftyduck/minecraftlib

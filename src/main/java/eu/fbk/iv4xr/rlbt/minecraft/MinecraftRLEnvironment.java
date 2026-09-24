@@ -460,7 +460,8 @@ public class MinecraftRLEnvironment implements Environment {
         deathsAtEpisodeStart = state.getDeathCount();
         if (deathsAtEpisodeStart == null) {
             throw new RuntimeException("the testbench does not report the death count: "
-                    + "rebuild it with patch P2, otherwise the agent's death is undetectable");
+                    + "update it to se-fbk/MineflayerTestbench main (PR #10 or later), "
+                    + "otherwise the agent's death is undetectable");
         }
 
         Float hp = state.getHealth();
