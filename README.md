@@ -19,8 +19,7 @@ by `burlap.algorithm` in the BURLAP config file, not by the command line.
 
 - **Java 11+** and **Maven**
 - **Node.js 18+** and **npm** (for the testbench)
-- A running **vanilla Minecraft server** with `online-mode=false` (see
-  [sut/minecraft/SERVER.md](sut/minecraft/SERVER.md) for the one used during development).
+- A running **vanilla Minecraft server** with `online-mode=false`.
   The bot runs server commands, so it must be **OP**ed (default username: `Bot`).
 - **Python 3** with `numpy` and `matplotlib` (`pip install numpy matplotlib`) [_only if you want to
   render the coverage heatmaps_]

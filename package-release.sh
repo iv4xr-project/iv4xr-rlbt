@@ -85,7 +85,6 @@ cp -r "$TESTBENCH/dist" "$TB_OUT/"
 for f in package.json package-lock.json tsconfig.json config.json README.md LICENSE; do
 	[[ -f "$TESTBENCH/$f" ]] && cp "$TESTBENCH/$f" "$TB_OUT/"
 done
-[[ -f "$PROJECT_DIR/sut/minecraft/SERVER.md" ]] && cp "$PROJECT_DIR/sut/minecraft/SERVER.md" "$PKG/sut/minecraft/"
 
 if [[ $WITH_NODE_MODULES -eq 1 ]]; then
 	info "copio node_modules (~$(du -sh "$TESTBENCH/node_modules" 2>/dev/null | cut -f1))... può volerci un po'"
@@ -128,7 +127,7 @@ cat > "$PKG/LEGGIMI.md" <<EOF
 ## Requisiti
 - Java 11 o superiore (\`java -version\`)
 - Node.js + npm nel PATH (il launcher avvia da solo il testbench mineflayer)
-- Un server Minecraft 1.21.5 raggiungibile (vedi \`sut/minecraft/SERVER.md\`)
+- Un server Minecraft vanilla raggiungibile, con \`online-mode=false\` e il bot (\`Bot\`) OP
 
 ## Primo avvio
 $(if [[ $WITH_NODE_MODULES -eq 0 ]]; then
