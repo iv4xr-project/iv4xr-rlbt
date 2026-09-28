@@ -2,7 +2,10 @@ package eu.fbk.iv4xr.rlbt.minecraft;
 
 import java.io.File;
 import java.io.FileNotFoundException;
+import java.io.IOException;
 import java.io.PrintStream;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -42,11 +45,12 @@ public class MineAgent {
 	 */
 	private static List<Episode> executeDeepQLearningTrainingOnMinecraft(String testbenchUrl, String levelCsv) throws InterruptedException, FileNotFoundException {
 		MinecraftEnv minecraftEnv = new MinecraftEnv(testbenchUrl);
-		initializeLevel(testbenchUrl, levelCsv, minecraftEnv);
 		DomainGenerator mcDomainGenerator = new MinecraftDomainGenerator();
 		final SADomain domain = (SADomain) mcDomainGenerator.generateDomain();
 
+		// the environment logs the bot in, and the level can only be built through it
 		MinecraftRLEnvironment mcRlEnvironment = new MinecraftRLEnvironment(minecraftEnv, mineConfiguration);
+		initializeLevel(testbenchUrl, levelCsv, minecraftEnv);
 		File sessionDir = prepareSessionDir();
 
 		int numEpisodes = (int)burlapConfiguration.getParameterValue("burlap.num_of_episodes");
@@ -96,11 +100,12 @@ public class MineAgent {
 
 	private static List<Episode> executeQLearningTrainingOnMinecraft(String testbenchUrl, String levelCsv) throws InterruptedException, FileNotFoundException {
 		MinecraftEnv minecraftEnv = new MinecraftEnv(testbenchUrl);
-		initializeLevel(testbenchUrl, levelCsv, minecraftEnv);
 		DomainGenerator mcDomainGenerator = new MinecraftDomainGenerator();
 		final SADomain domain = (SADomain) mcDomainGenerator.generateDomain();
 
+		// the environment logs the bot in, and the level can only be built through it
 		MinecraftRLEnvironment mcRlEnvironment = new MinecraftRLEnvironment(minecraftEnv, mineConfiguration);
+		initializeLevel(testbenchUrl, levelCsv, minecraftEnv);
 		File sessionDir = prepareSessionDir();
 
 		// Get number of episodes from burlap_minecraft.config
@@ -283,19 +288,23 @@ public class MineAgent {
 	}
 
 	/**
-	 * Connect to the testbench and build the level
+	 * Build the level through the bot, which must have already joined the server
 	 * @param testbenchUrl url of the testbench
 	 * @param levelCsv path of the level
 	 */
 	private static void initializeLevel(String testbenchUrl, String levelCsv, MinecraftEnv env) {
 		String levelPath = new File(levelCsv).getAbsolutePath();
 
-		System.out.println("Connecting to MineflayerTestbench at " + testbenchUrl);
-		// The testbench starts with no bot: log ours into the Minecraft server first
-		env.join((String) mineConfiguration.getParameterValue("mine.address"));
+		System.out.println("Connected to MineflayerTestbench at " + testbenchUrl);
 		System.out.println("Building level: " + levelPath);
 
-		Map<String, Vec3> tags = env.buildLevel(levelCsv, 0, 150, 0);
+		String levelData;
+		try {
+			levelData = Files.readString(Path.of(levelCsv));
+		} catch (IOException e) {
+			throw new RuntimeException("Unable to read the level " + levelPath, e);
+		}
+		Map<String, Vec3> tags = env.buildLevel(MinecraftRLEnvironment.AGENT_ID, levelData, 0, 150, 0);
 		System.out.println("Arena built. Tags: " + tags);
 	}
 

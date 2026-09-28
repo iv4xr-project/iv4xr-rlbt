@@ -4,11 +4,11 @@ import burlap.mdp.core.action.Action;
 import burlap.mdp.core.state.State;
 import burlap.mdp.singleagent.environment.Environment;
 import burlap.mdp.singleagent.environment.EnvironmentOutcome;
+import eu.fbk.iv4xr.minecraftlib.MinecraftAgent;
 import eu.fbk.iv4xr.minecraftlib.MinecraftEnv;
 import eu.fbk.iv4xr.minecraftlib.MinecraftGoalLib;
 import eu.fbk.iv4xr.minecraftlib.MinecraftState;
 import eu.fbk.iv4xr.rlbt.configuration.MinecraftConfiguration;
-import eu.iv4xr.framework.mainConcepts.TestAgent;
 import eu.iv4xr.framework.mainConcepts.TestDataCollector;
 import eu.iv4xr.framework.mainConcepts.WorldEntity;
 import eu.iv4xr.framework.spatial.Vec3;
@@ -30,7 +30,7 @@ public class MinecraftRLEnvironment implements Environment {
 
     private final MinecraftEnv minecraftEnv;      // HTTP client, only one instance
     private final MinecraftState state;           // belief-state iv4xr
-    private final TestAgent testAgent;            // minecraft agent
+    private final MinecraftAgent testAgent;       // minecraft agent
     private final MinecraftGoalLib goalLib;
     private final MinecraftBurlapState currentState;
     private double lastReward;
@@ -74,7 +74,7 @@ public class MinecraftRLEnvironment implements Environment {
     private int episodeNumber;
     private int tickCounter;
 
-    private final String AGENT_ID = "Bot";
+    static final String AGENT_ID = "Bot";
     private final String mobTag;
     private final String weapon;
 
@@ -115,11 +115,12 @@ public class MinecraftRLEnvironment implements Environment {
         state = new MinecraftState();
         goalLib = new MinecraftGoalLib();
 
-        testAgent = new TestAgent(AGENT_ID, "tester");
+        testAgent = new MinecraftAgent(AGENT_ID, (String) mineConfiguration.getParameterValue("mine.address"));
         testAgent.setTestDataCollector(new TestDataCollector());
 
-        // attaching the environment is what lets state.updateState() observe:
-        // MinecraftState.updateState calls env().observe(agentId)
+        // attaching the environment logs the bot into the Minecraft server, and is
+        // what lets state.updateState() observe: MinecraftState.updateState calls
+        // env().observe(agentId)
         testAgent.attachState(state).attachEnvironment(env);
 
         currentState = new MinecraftBurlapState();
@@ -134,7 +135,7 @@ public class MinecraftRLEnvironment implements Environment {
         WorldEntity mob = mobEntity(mobTag);
 
         Float ownHp = state.getHealth();
-        Float mobHp = minecraftEnv.getMobHealth(mobTag);
+        Float mobHp = minecraftEnv.getMobHealth(AGENT_ID, mobTag);
         Vec3 ownPos = state.getAgentPosition();
         Vec3 mobPos = (mob == null) ? null : mob.position;
         Double dist = distance(ownPos, mobPos);
@@ -483,7 +484,7 @@ public class MinecraftRLEnvironment implements Environment {
     @Override
     public void resetEnvironment() {
         waitUntilAlive();
-        minecraftEnv.resetWorker();
+        minecraftEnv.resetAgent(AGENT_ID);
 
         if (minecraftEnv.tagUuids.get(mobTag) == null) {
             throw new RuntimeException("reset succeeded but tag " + mobTag

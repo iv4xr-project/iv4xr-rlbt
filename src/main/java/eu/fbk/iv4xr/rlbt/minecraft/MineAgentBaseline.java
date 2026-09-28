@@ -2,6 +2,7 @@ package eu.fbk.iv4xr.rlbt.minecraft;
 
 import java.io.File;
 import java.io.FileNotFoundException;
+import eu.fbk.iv4xr.minecraftlib.MinecraftAgent;
 import eu.fbk.iv4xr.minecraftlib.MinecraftEnv;
 import eu.fbk.iv4xr.minecraftlib.MinecraftGoalLib;
 import eu.fbk.iv4xr.minecraftlib.MinecraftState;
@@ -16,6 +17,8 @@ import nl.uu.cs.aplib.mainConcepts.GoalStructure;
 import nl.uu.cs.aplib.mainConcepts.ProgressStatus;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
 
 import static nl.uu.cs.aplib.AplibEDSL.SEQ;
 import static nl.uu.cs.aplib.AplibEDSL.SUCCESS;
@@ -63,16 +66,19 @@ public class MineAgentBaseline {
         mobTag = (String) mineConfiguration.getParameterValue("mine.mob_tag");
         String weapon = (String) mineConfiguration.getParameterValue("mine.weapon");
         MinecraftEnv env = new MinecraftEnv(testbenchUrl);
-        // The testbench starts with no bot: log ours into the Minecraft server first
-        env.join((String) mineConfiguration.getParameterValue("mine.address"));
         MinecraftState state = new MinecraftState();
         MinecraftGoalLib goalLib = new MinecraftGoalLib();
 
-        TestAgent agent = new TestAgent(AGENT_ID, "tester");
+        MinecraftAgent agent = new MinecraftAgent(AGENT_ID, (String) mineConfiguration.getParameterValue("mine.address"));
         agent.setTestDataCollector(new TestDataCollector());
-        env.buildLevel(levelCsv, 0, 65, 0);
+        // Connect state and agent environment: attaching the environment logs the bot into the server
+        agent.attachState(state).attachEnvironment(env);
 
-        agent.attachState(state).attachEnvironment(env); // Connect state and agent environment
+        try {
+            env.buildLevel(AGENT_ID, Files.readString(Path.of(levelCsv)), 0, 65, 0);
+        } catch (IOException e) {
+            throw new RuntimeException("Unable to read the level " + levelCsv, e);
+        }
 
         // Create the per-session output directory (minecraft-results/<level>/baseline/<systemtime>)
         File sessionDir = new File(outputDir);
@@ -91,14 +97,14 @@ public class MineAgentBaseline {
             prevOwnHp = state.getHealth();   // baseline for per-tick damage-taken accounting
 
             // equip the weapon + reach the mob ---
-            Float mobBefore = env.getMobHealth(mobTag);
+            Float mobBefore = env.getMobHealth(AGENT_ID, mobTag);
             Float ownBefore = state.getHealth();
             GoalStructure approach = SEQ(
                     goalLib.selected(weapon),
                     goalLib.tagReachedWithinDistance(mobTag, 2.0));
             tick = runGoal(agent, state, env, approach, log, episode, "approach", tick);
             log.logAction(episode, "MOVE_TO", mobTag, "2.0", approach.getStatus().toString(),
-                    mobBefore, env.getMobHealth(mobTag), ownBefore, state.getHealth());
+                    mobBefore, env.getMobHealth(AGENT_ID, mobTag), ownBefore, state.getHealth());
 
 
             // variables for summary.txt
@@ -112,7 +118,7 @@ public class MineAgentBaseline {
 
             // attack loop: hit until the mob dies (or max iterations) ---
             for (int i = 1; i < MAX_ITERATIONS; i++) {
-                mobBefore = env.getMobHealth(mobTag);
+                mobBefore = env.getMobHealth(AGENT_ID, mobTag);
                 ownBefore = state.getHealth();
 
                 GoalStructure hit = SEQ(
@@ -120,7 +126,7 @@ public class MineAgentBaseline {
                         goalLib.waited(20));   // wait ~1s
                 tick = runGoal(agent, state, env, hit, log, episode, "hit_" + i, tick);
 
-                Float mobAfter = env.getMobHealth(mobTag);
+                Float mobAfter = env.getMobHealth(AGENT_ID, mobTag);
                 Float ownAfter = state.getHealth();
                 log.logAction(episode, "ATTACK", mobTag, "", hit.getStatus().toString(),
                         mobBefore, mobAfter, ownBefore, ownAfter);
@@ -195,7 +201,7 @@ public class MineAgentBaseline {
                 prevOwnHp = ownHp;
 
             Vec3 ownPos = state.getAgentPosition();
-            Float mobHp = env.getMobHealth(mobTag);
+            Float mobHp = env.getMobHealth(AGENT_ID, mobTag);
             Vec3 mobPos = mobPosition(env, state, mobTag);
             Double dist = distance(ownPos, mobPos);
 
@@ -216,13 +222,13 @@ public class MineAgentBaseline {
 
     /**
      * Read and print mob health via MinecraftEnv.getMobHealth
-     * (cals route GET /tags/:uuid of the testbench)
+     * (calls route GET /:bot/tags/:uuid of the testbench)
      *
      * @param env  environment
      * @param when descriptive label of the moment (e.g. "start", "after hit 3")
      */
     private void logMobHealth(MinecraftEnv env, String when) {
-        Float hp = env.getMobHealth(MineAgentBaseline.mobTag);
+        Float hp = env.getMobHealth(AGENT_ID, MineAgentBaseline.mobTag);
         System.out.println("HP of " + MineAgentBaseline.mobTag + " (" + when + "): " + (hp == null ? "dead/unreachable" : hp));
     }
 

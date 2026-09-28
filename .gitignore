@@ -12,6 +12,10 @@ buildNumber.properties
 # https://github.com/takari/maven-wrapper#usage-without-binary-jar
 .mvn/wrapper/maven-wrapper.jar
 
+# Personal work notes
+RIPRENDI.md
+UPDATE.md
+
 # JetBrains -- IDE state is per-developer, none of it belongs in the repo
 .idea/
 *.iml

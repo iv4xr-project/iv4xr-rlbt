@@ -4,34 +4,26 @@ Reinforcement Learning based coverage driven test case generation tool.
 RLbT drives an agent through a game under test (SUT) with reinforcement learning, and measures the
 coverage it achieves. Two SUTs are supported:
 
-- **Minecraft** (`MineAgent`) — the current line of work: a Mineflayer bot on a real vanilla
+- **Minecraft**: a Mineflayer bot on a real vanilla
   Minecraft server, driven over HTTP through [MineflayerTestbench](sut/minecraft/mineflayer-testbench).
-- **LabRecruits** — the original SUT, still supported (single and multi agent).
+- **LabRecruits**: the original SUT, still supported (single and multi agent).
 
 Both tabular **Q-learning** and **Deep Q-learning (DQN)** are available; which one runs is decided
 by `burlap.algorithm` in the BURLAP config file, not by the command line.
 
 ---
 
-## Quick start — Minecraft (MineAgent)
+## Quick start: Minecraft (MineAgent)
 
-### 0. Requirements
+### Requirements
 
 - **Java 11+** and **Maven**
 - **Node.js 18+** and **npm** (for the testbench)
 - A running **vanilla Minecraft server** with `online-mode=false` (see
   [sut/minecraft/SERVER.md](sut/minecraft/SERVER.md) for the one used during development).
   The bot runs server commands, so it must be **OP**ed (default username: `Bot`).
-- **Python 3** with `numpy` and `matplotlib` (`pip install numpy matplotlib`) only if you want to
-  render the coverage heatmaps
-
-The testbench is a git submodule, so clone with:
-
-```bash
-git clone --recurse-submodules <repo-url>
-# or, on an existing clone:
-git submodule update --init --recursive
-```
+- **Python 3** with `numpy` and `matplotlib` (`pip install numpy matplotlib`) [_only if you want to
+  render the coverage heatmaps_]
 
 ### 1. Build everything (once)
 
@@ -42,7 +34,7 @@ cd sut/minecraft/minecraftlib && mvn install -DskipTests && cd ../../..
 # 2) the Node testbench (the SUT)
 cd sut/minecraft/mineflayer-testbench && npm i && npm run build && cd ../../..
 
-# 3) RLbT itself (fat jar)
+# 3) RLbT itself (jar)
 mvn package -DskipTests
 ```
 
@@ -52,7 +44,7 @@ The only thing you normally have to edit is the server address in
 `src/test/resources/configurations/mineAgent.config`:
 
 ```
-mine.address=localhost          # or host:port, e.g. myserver.example.com:25565
+mine.address=localhost:25565    # host:port of the Minecraft server (the port is required)
 ```
 
 Everything else already has working defaults (level, reward, weapon, budgets).
@@ -63,23 +55,15 @@ Everything else already has working defaults (level, reward, weapon, budgets).
 java -jar target/iv4xr-rlbt-1.0-jar-with-dependencies.jar -game Minecraft
 ```
 
-That is all. `RlbtLauncher` starts the testbench itself (`npm run start address=<mine.address>`),
-waits for its `/status` endpoint, builds the arena from the level CSV, and runs the training
-episodes. With the shipped defaults this is a **training** run of the **RL agent** on the
+`RlbtLauncher` starts the testbench itself (`npm run start`) and waits for its
+`/status` endpoint; the agent then asks the testbench to log its bot into `mine.address`, builds
+the arena from the level CSV, and runs the training episodes. With the shipped defaults this is a **training** run of the **RL agent** on the
 `outdoor2_skeleton2` arena, with tabular Q-learning and 200 episodes.
 
 The Minecraft server is the **only** process you have to start yourself.
 
 > ⚠️ **`mvn compile` does not rebuild the jar.** Always `mvn package` before launching from the jar,
 > otherwise you run the code of the previous `package`.
->
-> ⚠️ **Do not hard-kill the Java process** (Ctrl-C is fine, `kill -9` is not). `RlbtLauncher` kills
-> the testbench process tree in a `finally` block; skipping it leaves an **orphan bot connected**,
-> and the next run gets kicked for reusing the same username.
->
-> ℹ️ `Arena built. Tags: {}` in the log is **normal**: that map only contains positional tags, while
-> the mob tag is an entity tag kept in a different map.
-
 ### 4. Where the results go
 
 ```
@@ -89,16 +73,16 @@ rlbt-files/minecraft-results/<level-name>/rlbt/<systemtime>/
 (`<level-name>` is the basename of `mine.level` without `.csv`; `rlbt` becomes `baseline` for
 baseline runs.)
 
-| File | Content |
-|---|---|
-| `ticks.csv` | per-tick telemetry: agent HP and position, mob position, distance, phase — input of the heatmap |
+| File | Content                                                                                             |
+|---|-----------------------------------------------------------------------------------------------------|
+| `ticks.csv` | per-tick telemetry: agent HP and position, mob position, distance, phase (input of the heatmap)     |
 | `actions.csv` | per-action: action, goal outcome, HP before/after, damage, `hit_landed`, state buckets before/after |
-| `summary.txt` | hits attempted/landed, efficiency, damage dealt/taken, kills, deaths, episodes |
-| `episodeSummary.txt` | per episode: actions, total reward, time, coverage metrics, cumulative state-action coverage |
-| `qtable.ser` / `qtable.txt` | the learned Q-table (serialized and human readable) |
-| `episode*.ser` | BURLAP episodes |
+| `summary.txt` | hits attempted/landed, efficiency, damage dealt/taken, kills, deaths, episodes                      |
+| `episodeSummary.txt` | per episode: actions, total reward, time, coverage metrics, cumulative state-action coverage        |
+| `qtable.ser` / `qtable.txt` | the learned Q-table (serialized and human readable)                                                 |
+| `episode*.ser` | BURLAP episodes                                                                                     |
 
-### 5. Optional — spatial coverage heatmap
+### 5. Optional: spatial coverage heatmap
 
 Generated afterwards from `ticks.csv` plus the level CSV (1 px = 1 block):
 
@@ -126,7 +110,7 @@ What runs is decided by three files, not by the command line.
 
 | Parameter | Meaning |
 |---|---|
-| `game.mode` | `training` / `testing` / `random` (⚠️ `testing` is not implemented yet for Minecraft) |
+| `game.mode` | `training` / `testing` / `random` (`testing` is not implemented yet for Minecraft) |
 | `game.mineAgentUseBaseline` | `false` = RL agent, `true` = scripted baseline (non-RL reference run) |
 | `game.mineAgentSutConfig` | path of the Minecraft SUT config |
 | `game.mineAgentBurlapConfig` | path of the Minecraft BURLAP config (falls back to `game.burlapConfig`) |
@@ -135,7 +119,7 @@ What runs is decided by three files, not by the command line.
 
 | Parameter | Default | Meaning |
 |---|---|---|
-| `mine.address` | `localhost` | address (`host` or `host:port`) of the Minecraft server |
+| `mine.address` | `localhost:25565` | `host:port` of the Minecraft server (the port is required) |
 | `mine.level` | `.../minecraft-levels/outdoor2_skeleton2.csv` | CSV describing the arena; also names the results folder (the built-in fallback, used when the key is absent, is `arena.csv`) |
 | `mine.testbenchUrl` | `http://localhost:3000` | HTTP API exposed by the testbench |
 | `mine.mob_tag` | `mob1` | tag of the mob the agent fights, as written in the level CSV |
@@ -147,35 +131,9 @@ What runs is decided by three files, not by the command line.
 Ready-made arenas are in `src/test/resources/minecraft-levels/` (`arena`, `outdoor1_*`,
 `outdoor2_*`, one per mob type).
 
-### `src/test/resources/configurations/burlap_minecraft.config`
-
-`burlap.algorithm` (`QLearning` / `DeepQLearning`), `burlap.num_of_episodes`, and the usual
-`qinit` / `lr` / `gamma` / `epsilonval` — plus the DQN-only parameters (`dqn_lr`, `epsilonmin`,
-`network.hidden_size`, replay buffer capacity, batch size, target update frequency). Switching to
-DQN means editing this one file; the SUT config stays the same.
-
-⚠️ Unknown keys are **rejected**: an invented parameter aborts the run instead of being ignored.
-
-### Running `MineAgent` by hand
-
-Possible, but then the testbench must be started separately (`npm run start address=...` inside
-`sut/minecraft/mineflayer-testbench`):
-
-```bash
-java -cp target/iv4xr-rlbt-1.0-jar-with-dependencies.jar eu.fbk.iv4xr.rlbt.minecraft.MineAgent \
-     http://localhost:3000 \
-     src/test/resources/minecraft-levels/arena.csv \
-     training \
-     src/test/resources/configurations/burlap_minecraft.config \
-     src/test/resources/configurations/mineAgent.config
-```
-
-(the five args of `MineAgent.main` are exactly: testbench URL, level CSV, mode, BURLAP config,
-Minecraft SUT config.)
-
 ---
 
-## Quick start — LabRecruits
+## Quick start: LabRecruits
 
 ```bash
 mvn package -DskipTests
@@ -205,12 +163,8 @@ java -cp target/iv4xr-rlbt-1.0-jar-with-dependencies.jar eu.fbk.iv4xr.rlbt.RlbtM
   -sutConfig src/test/resources/configurations/lrLevelMultiAgent.config
 ```
 
-⚠️ In testing mode `burlap.algorithm` must be the same used for training, otherwise the tool tries
+In testing mode `burlap.algorithm` must be the same used for training, otherwise the tool tries
 to deserialize the wrong model file (`qtable.ser` vs `qnetwork.ser`).
-
-⚠️ `mvn test` does **not** run any RL training: the JUnit tests under `src/test/java/.../agents/`
-are functional tests of the iv4xr/LabRecruits engine itself. Training and testing only run through
-the commands above.
 
 ### BURLAP configuration file
 
@@ -218,8 +172,8 @@ A text file where each line contains a parameter and its value separated by an e
 
 - `burlap.algorithm`: `QLearning` or `DeepQLearning`
 - `burlap.qlearning.qinit`: initial Q-value to use everywhere
-- `burlap.qlearning.lr`: learning rate — to what extent newly acquired information overrides old information (0 = the agent learns nothing, 1 = it considers only the most recent information)
-- `burlap.qlearning.gamma`: discount factor — the importance of future rewards (0 = only current rewards, approaching 1 = strive for long-term reward)
+- `burlap.qlearning.lr`: learning rate
+- `burlap.qlearning.gamma`: discount factor 
 - `burlap.qlearning.epsilonval`: epsilon of the Epsilon-Greedy algorithm, used to balance exploration and exploitation
 - `burlap.qlearning.out_qtable`: path to the Q-table
 - `burlap.num_of_episodes`: number of episodes to run
