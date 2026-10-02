@@ -2,6 +2,7 @@ package eu.fbk.iv4xr.rlbt;
 
 import eu.fbk.iv4xr.rlbt.minecraft.MineAgent;
 import eu.fbk.iv4xr.rlbt.minecraft.MineAgentBaseline;
+import eu.fbk.iv4xr.rlbt.minecraft.exploration.MineExplorer;
 
 import java.io.File;
 import java.io.FileInputStream;
@@ -76,7 +77,11 @@ public class RlbtLauncher {
 
 	private static void launchMineAgentMain(Properties gameConfig, String burlapConfig) throws Exception {
 		// Configuration files
+		String system = mineAgentSystem(gameConfig.getProperty("game.mineAgentSystem", "combat"));
 		boolean baselineFlag = baselineFlag(gameConfig.getProperty("game.mineAgentUseBaseline", "false"));
+		if (system.equals("exploration") && baselineFlag)
+			throw new IllegalArgumentException(
+					"game.mineAgentUseBaseline=true is only supported by game.mineAgentSystem=combat");
 		String sutConfigPath = gameConfig.getProperty("game.mineAgentSutConfig");
 		String mineBurlapConfig = gameConfig.getProperty("game.mineAgentBurlapConfig", burlapConfig);
 		Properties mineConfig = new Properties();
@@ -101,7 +106,17 @@ public class RlbtLauncher {
 		System.out.println("Starting mineflayer-testbench (server mode)");
 		Process testbench = pb.start();
 
-		if (baselineFlag) {
+		if (system.equals("exploration")) {
+			System.out.println("[SYSTEM] Selected exploration for MineAgent: coverage of the environment states (reward fixed to "
+					+ MineExplorer.REWARD_TYPE + ").");
+			try {
+				waitForTestbench(testbenchUrl, 60);
+				MineExplorer.main(new String[] { testbenchUrl, levelPath, modeFlag, mineBurlapConfig, sutConfigPath });
+			} finally {
+				testbench.descendants().forEach(ProcessHandle::destroy);
+				testbench.destroy();
+			}
+		} else if (baselineFlag) {
 			System.out.println("[MODE] Selected baselineMode for MineAgent: this is a scripted version just for comparison.");
 			try {
 				waitForTestbench(testbenchUrl, 60);
@@ -156,6 +171,13 @@ public class RlbtLauncher {
 		else if (baseline.equalsIgnoreCase("false"))
 			return false;
 		throw new IllegalArgumentException("Invalid value for game.baseline: " + baseline);
+	}
+
+	private static String mineAgentSystem(String system) {
+		if (system.equalsIgnoreCase("combat") || system.equalsIgnoreCase("exploration"))
+			return system.toLowerCase();
+		throw new IllegalArgumentException("Invalid value for game.mineAgentSystem: " + system
+				+ " (use combat or exploration)");
 	}
 
 
