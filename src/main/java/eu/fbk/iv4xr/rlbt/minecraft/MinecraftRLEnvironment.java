@@ -79,7 +79,7 @@ public class MinecraftRLEnvironment implements Environment {
     private final String weapon;
 
     /** Distance that APPROACH and RETREAT aim to reach */
-    private static final double APPROACH_DISTANCE = 6.0;
+    private static final double APPROACH_DISTANCE = 2.0;
     private static final double RETREAT_DISTANCE = MinecraftBurlapState.RETREAT_RANGE;
 
     private static final double RETREAT_TOLERANCE = 1.5;
