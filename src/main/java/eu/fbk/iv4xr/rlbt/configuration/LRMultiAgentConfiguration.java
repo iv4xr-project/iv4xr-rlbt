@@ -10,7 +10,7 @@ public class LRMultiAgentConfiguration extends Configuration{
 		parameters.put("labrecruits.level_name", "buttons_doors_1");
 		parameters.put("labrecruits.level_folder", "src/test/resources/levels/");
 		
-		parameters.put("labrecruits.execution_folder", ".");
+		parameters.put("labrecruits.execution_folder", "sut");
 		
 		parameters.put("labrecruits.agentpassive_ids", "agent1,agent3,agent4");
 		parameters.put("labrecruits.agentactive_id", "agent2");

@@ -27,10 +27,10 @@ import burlap.mdp.singleagent.environment.SimulatedEnvironment;
 import burlap.mdp.singleagent.model.RewardFunction;
 import burlap.statehashing.HashableState;
 import burlap.statehashing.HashableStateFactory;
-import eu.fbk.iv4xr.rlbt.labrecruits.LabRecruitsState;
-import eu.fbk.iv4xr.rlbt.labrecruits.distance.JaccardDistance;
+import burlap.mdp.core.oo.state.OOState;
 import eu.fbk.iv4xr.rlbt.utils.SerializationUtil;
 import eu.fbk.iv4xr.rlbt.utils.Utils;
+import eu.fbk.iv4xr.rlbt.distance.NoStateSimilarity;
 import eu.fbk.iv4xr.rlbt.distance.StateDistance;
 
 import org.yaml.snakeyaml.Yaml;
@@ -247,7 +247,16 @@ public class QLearningRL extends MDPSolver implements QProvider, LearningAgent, 
 	protected int													totalNumberOfSteps = 0;
 	
 	protected Random 					rand;
-	private StateDistance stDistFunction;
+
+	/**
+	 * Criterion used by {@link #GetSimilarEntry(HashableState)} to decide whether an
+	 * observation can reuse the Q-table entry of an already known one. It is
+	 * SUT-specific and therefore injected through the constructor: LabRecruits passes
+	 * a {@code JaccardDistance}, Minecraft a {@link NoStateSimilarity} (its state is
+	 * already an abstraction, so no further merging is wanted -- see PROJECT.md §2.8).
+	 * Defaults to {@link NoStateSimilarity}, i.e. exact match only.
+	 */
+	private StateDistance stDistFunction = new NoStateSimilarity();
 	
 	/**
 	 * Initializes Q-learning with 0.1 epsilon greedy policy, the same Q-value initialization everywhere, and places no limit on the number of steps the 
@@ -260,15 +269,23 @@ public class QLearningRL extends MDPSolver implements QProvider, LearningAgent, 
 	 * @param qInit the initial Q-value to user everywhere
 	 * @param learningRate the learning rate
 	 */
+	/**
+	 * @param stateDistance the SUT-specific state-similarity criterion, see {@link #stDistFunction}
+	 */
 	public QLearningRL(SADomain domain, double gamma, HashableStateFactory hashingFactory,
-			double qInit, double learningRate) {
+			double qInit, double learningRate, StateDistance stateDistance) {
 		this.QLInit(domain, gamma, hashingFactory, new ConstantValueFunction(qInit), learningRate, new EpsilonGreedy(this, 0.1), Integer.MAX_VALUE);
+		this.stDistFunction = stateDistance;
 	}
 
-	
+	/**
+	 * @param stateDistance the SUT-specific state-similarity criterion, see {@link #stDistFunction}
+	 */
 	public QLearningRL(SADomain domain, double gamma, HashableStateFactory hashingFactory,
-			double qInit, double learningRate, double epsilonval, double decayepsilonstep, int maxEpisodeSize) {
+			double qInit, double learningRate, double epsilonval, double decayepsilonstep, int maxEpisodeSize,
+			StateDistance stateDistance) {
 		this.QLInit(domain, gamma, hashingFactory, new ConstantValueFunction(qInit), learningRate, new EpsilonGreedy(this, epsilonval), epsilonval, decayepsilonstep, maxEpisodeSize);
+		this.stDistFunction = stateDistance;
 	}
 
 	/**
@@ -372,9 +389,7 @@ public class QLearningRL extends MDPSolver implements QProvider, LearningAgent, 
 		numEpisodesForPlanning = 1;
 		maxQChangeForPlanningTermination = 0.;
 		rand = RandomFactory.getMapped(0);
-		
-		this.stDistFunction = new JaccardDistance(); 
-		
+
 }
 	/**
 	 * Sets the {@link RewardFunction}, {@link burlap.mdp.core.TerminalFunction},
@@ -672,28 +687,29 @@ public class QLearningRL extends MDPSolver implements QProvider, LearningAgent, 
 	@Override
 	public Episode runLearningEpisode(Environment env) {
 		return this.runLearningEpisode(env, -1);
-		//return this.runLearningEpisode(env, 20);
 	}
 
-	
-   
 	@Override
 	public Episode runLearningEpisode(Environment env, int maxSteps) {	
 		System.out.println("----------QlearningRL : Starting runLearningEpisode()----------------------");
 		State initialState = env.currentObservation();		
 		Episode ea = new Episode(initialState);
-		HashableState curState = this.stateHash(initialState);
-//		System.out.println("Hashed state = " +curState);
-		//System.out.println("In runLearningEpisode() - Starting while() loop");
-		
-		eStepCounter = 0;
+		HashableState curState;
+        curState = this.stateHash(initialState);
 
+		eStepCounter = 0;
 		maxQChangeInLastEpisode = 0.;
-		//while(!env.isInTerminalState() && (eStepCounter < maxSteps || maxSteps == -1)){
+
 		while(!env.isInTerminalState() && (eStepCounter < maxSteps || maxSteps == -1)){
 			System.out.println("==================Qlearning - Next turn for this episode==================================");
-			LabRecruitsState curlabState = (LabRecruitsState) (curState.s());
-			if(curlabState.numObjects()==0) {
+
+			// cast to OOState only: every SUT state is one, and nothing below needs the
+			// concrete type. Downcasting per-SUT here would just move the coupling.
+			// NOTE: the guard means "empty observation". It fits LabRecruits, whose state is
+			// a bag of observed entities. A Minecraft state always holds its feature object,
+			// so it never fires there: a failed observation is caught by the environment.
+			OOState curObservation = (OOState) (curState.s());
+			if(curObservation.numObjects()==0) {
 				System.out.println(" BUG : Empty Observation of RL active agent. Ending Episode...");
 				break;
 			}
@@ -837,8 +853,8 @@ public class QLearningRL extends MDPSolver implements QProvider, LearningAgent, 
 			}
 			
 		    //move on polling environment for its current state in case it changed during processing
-			LabRecruitsState newstate = (LabRecruitsState) env.currentObservation();
-			if (newstate.numObjects()==0) {
+			OOState newstate = (OOState) env.currentObservation();
+			if (newstate.numObjects()==0) {   // see the note on the guard above
 				System.out.println("IN qlearning - nex observation is empty, restoring to prev obs = "+ eo.op.toString());
 				curState = this.stateHash(eo.op);
 			}
@@ -947,8 +963,7 @@ public class QLearningRL extends MDPSolver implements QProvider, LearningAgent, 
 	/*---------------------Test QLearning Agent------------------------------------------------------------------------*/
 	public Episode testQLearingAgent(Environment env, int maxSteps) {	
 		System.out.println("---------------------------------------------------------------\n Test  QLearning agent");
-		this.stDistFunction = new JaccardDistance(); 
-		State initialState = env.currentObservation();		
+		State initialState = env.currentObservation();
 		Episode episode = new Episode(initialState);
 		HashableState curState = this.stateHash(initialState);
 		

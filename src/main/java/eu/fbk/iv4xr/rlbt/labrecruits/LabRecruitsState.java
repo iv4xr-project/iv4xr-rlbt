@@ -24,15 +24,13 @@ public class LabRecruitsState extends GenericOOState implements Serializable {
 	private static final long serialVersionUID = 2179112444014557064L;
 
 	// add LabRecruits specific code here
-	
-	
+
 	/**
 	 * Construct the inital state
 	 * @param initial
 	 */
 	public LabRecruitsState(boolean initial) {
 		super();
-		
 	}
 
 	@Override

@@ -375,8 +375,35 @@ public class LabRecruitsRLEnvironment implements Environment {
 	      e.printStackTrace();
 	    }
 	}
-	
-	
+
+
+	/**
+	 * Reads entity IDs (buttons and doors) from the first section of the level CSV,
+	 * before the map layout (lines starting with 'w' or '|w'). Used by DeepQLearningRL
+	 * to build its fixed-size input/output vectors before the environment is started.
+	 */
+	public static List<String> loadEntityIds(String levelName, String levelFolder) {
+		String fullPath = Paths.get(levelFolder, levelName + ".csv").toAbsolutePath().toString();
+		List<String> ids = new ArrayList<>();
+		try {
+			BufferedReader br = new BufferedReader(new FileReader(fullPath));
+			String line;
+			while ((line = br.readLine()) != null) {
+				if (line.startsWith("|w") || line.startsWith("|f") || line.startsWith("w") || line.startsWith("f"))
+					break;
+				for (String token : line.split(",")) {
+					String t = token.trim();
+					if (!t.isEmpty() && !ids.contains(t))
+						ids.add(t);
+				}
+			}
+			br.close();
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
+		return ids;
+	}
+
 	/*start RL environment*/
 	public void startAgentEnvironment () throws InterruptedException {
 		AgentDeadFlag= false;

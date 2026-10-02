@@ -1,4 +1,6 @@
 target/
+rlbt-files/
+dist-release/
 pom.xml.tag
 pom.xml.releaseBackup
 pom.xml.versionsBackup
@@ -9,3 +11,29 @@ buildNumber.properties
 .mvn/timing.properties
 # https://github.com/takari/maven-wrapper#usage-without-binary-jar
 .mvn/wrapper/maven-wrapper.jar
+
+# Personal work notes
+RIPRENDI.md
+UPDATE.md
+
+# JetBrains -- IDE state is per-developer, none of it belongs in the repo
+.idea/
+*.iml
+out/
+
+# Other editors / OS
+.vscode/
+.DS_Store
+Thumbs.db
+
+# Java
+*.class
+*.log
+hs_err_pid*
+replay_pid*
+
+# Python (heatmap scripts)
+__pycache__/
+*.pyc
+.venv/
+venv/

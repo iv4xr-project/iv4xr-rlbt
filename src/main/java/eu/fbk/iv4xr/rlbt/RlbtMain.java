@@ -37,7 +37,7 @@ import eu.fbk.iv4xr.rlbt.utils.SerializationUtil;
 public class RlbtMain{
 
 	public enum BurlapAlgorithm {
-		QLearning
+		QLearning, DeepQLearning
 	}
 
 	public enum SearchMode {
@@ -51,7 +51,7 @@ public class RlbtMain{
 	// Predefined configuration file
 	static String currentDir = System.getProperty("user.dir");
 	static String burlapConfigFile =  currentDir+"/src/test/resources/configurations/burlap_test.config";
-	static String lrConfigFile = currentDir+"/src/test/resources/configurations/buttons_doors_1.config";
+	static String lrConfigFile = currentDir+"/src/test/resources/configurations/lrLevelSingleAgent.config";
 
 	// root folder for writing output
 	static String outputDir = currentDir + File.separator + "rlbt-files"+ File.separator + "results";//System.nanoTime();
@@ -88,7 +88,8 @@ public class RlbtMain{
 				(double)burlapConfiguration.getParameterValue("burlap.qlearning.lr"),
 				(double)burlapConfiguration.getParameterValue("burlap.qlearning.epsilonval"),
 				(double)burlapConfiguration.getParameterValue("burlap.qlearning.decayedepsilonstep"),
-				numEpisodes);
+				numEpisodes,
+				new JaccardDistance());
 		
 		List<Episode> episodes = new ArrayList<Episode>(numEpisodes);	// list to store results from Q-learning episodes
 		List<Double> episodeCoverage =  new ArrayList<Double>(numEpisodes);
@@ -132,7 +133,80 @@ public class RlbtMain{
 		labRecruitsRlEnvironment.stopAgentEnvironment();  /*stop RL agent environment*/
 		return episodes;
 	}
-	
+
+	private static List<Episode> executeDeepQLearningTrainingOnLabRecruits() throws InterruptedException, FileNotFoundException {
+
+		LabRecruitsRLEnvironment labRecruitsRlEnvironment = new LabRecruitsRLEnvironment(lrConfiguration, new JaccardDistance());
+		DomainGenerator lrDomainGenerator = new LabRecruitsDomainGenerator();
+		final SADomain domain = (SADomain) lrDomainGenerator.generateDomain();
+
+		int numEpisodes = (int)burlapConfiguration.getParameterValue("burlap.num_of_episodes");
+
+		String rewardtp = (String)lrConfiguration.getParameterValue("labrecruits.rewardtype");
+		if (rewardtp.equalsIgnoreCase("CuriousityDriven")) {
+			double epsilonval = (double)burlapConfiguration.getParameterValue("burlap.qlearning.epsilonval");
+			double calculatedDecayVal = (double)(epsilonval/numEpisodes);
+			calculatedDecayVal=calculatedDecayVal/2;
+			burlapConfiguration.setParameterValue("burlap.qlearning.decayedepsilonstep", Double.toString(calculatedDecayVal));  // set calculated decayed value according to number of episodes
+			System.out.println("epsilon val ="+epsilonval+ "  decay = "+calculatedDecayVal);
+		}
+		if (rewardtp.equalsIgnoreCase("Sparse")) {
+			burlapConfiguration.setParameterValue("burlap.qlearning.decayedepsilonstep", Double.toString(0));
+		}
+
+		/*create Reinforcement Learning (Deep Q-learning) agent*/
+		String levelName = (String) lrConfiguration.getParameterValue("labrecruits.level_name");
+		String levelFolder = (String) lrConfiguration.getParameterValue("labrecruits.level_folder");
+		List<String> entityIds = LabRecruitsRLEnvironment.loadEntityIds(levelName, levelFolder);
+		DeepQLearningRL agent = new DeepQLearningRL(domain,
+				(double) burlapConfiguration.getParameterValue("burlap.qlearning.gamma"),
+				entityIds,
+				(double) burlapConfiguration.getParameterValue("burlap.qlearning.dqn_lr"),
+				(double) burlapConfiguration.getParameterValue("burlap.qlearning.epsilonval"),
+				(double) burlapConfiguration.getParameterValue("burlap.qlearning.decayedepsilonstep"),
+				numEpisodes,
+				(double) burlapConfiguration.getParameterValue("burlap.qlearning.epsilonmin"),
+				(int)    burlapConfiguration.getParameterValue("burlap.network.hidden_size"));
+
+		List<Episode> episodes = new ArrayList<Episode>(numEpisodes);
+		List<Double> episodeCoverage =  new ArrayList<Double>(numEpisodes);
+		List<Long> episodeTime =  new ArrayList<Long>(numEpisodes);
+
+		int maxActionsPerEpisode = (int)lrConfiguration.getParameterValue("labrecruits.max_actions_per_episode");
+		/*------------Training - start running episodes------------------------*/
+		labRecruitsRlEnvironment.startAgentEnvironment();
+		for(int i = 0; i < numEpisodes; i++){
+			labRecruitsRlEnvironment.resetStateMemory();   // reset state buffer at the beginning of an episode
+			long startTime = System.currentTimeMillis();
+			episodes.add(agent.runLearningEpisode(labRecruitsRlEnvironment, maxActionsPerEpisode));
+			long estimatedTime = System.currentTimeMillis() - startTime;
+			System.out.println("Time for this episode  : "+estimatedTime);
+
+			double episodecov = labRecruitsRlEnvironment.CalculateEpisodeCoverage();  /*calculate coverage after finishing an episode*/
+			/*store time and coverage per episode*/
+			episodeCoverage.add(episodecov);
+			episodeTime.add(estimatedTime);
+
+			labRecruitsRlEnvironment.GlobalCoveragePerEpisode();
+			labRecruitsRlEnvironment.resetEnvironment();  /*reset environment*/
+		}
+
+		labRecruitsRlEnvironment.CalculateGlobalCoverageAfterTraining();
+		/*------------Save------------------------*/
+		agent.printNetworkSummary(System.out);
+		String qNetworkOutputFile = outputDir + File.separator + "qnetwork.ser";
+		agent.serializeModel(qNetworkOutputFile);
+		agent.printNetworkSummary(new PrintStream(qNetworkOutputFile + ".txt"));
+		String episodesummaryfile = outputDir + File.separator + "episodeSummary.txt";
+		SaveEpisodeSummary(episodes, episodesummaryfile, episodeCoverage, episodeTime);  // store episode summary (number of actions and reward per episode)
+
+		String episodesBaseName = outputDir + File.separator + "episode";
+		SerializationUtil.serializeEpisodes(episodes, episodesBaseName );
+
+		labRecruitsRlEnvironment.stopAgentEnvironment();  /*stop RL agent environment*/
+		return episodes;
+	}
+
 	private static void SaveEpisodeSummary(List<Episode> episodes, String outfile, List<Double> episodeCoverage, List<Long> episodeTime) throws FileNotFoundException {
 		PrintStream ps =  new PrintStream(outfile);
 		/*print number of actions taken per episode*/
@@ -179,7 +253,8 @@ public class RlbtMain{
 				(double)burlapConfiguration.getParameterValue("burlap.qlearning.lr"),
 				(double)burlapConfiguration.getParameterValue("burlap.qlearning.epsilonval"),
 				(double)burlapConfiguration.getParameterValue("burlap.qlearning.decayedepsilonstep"),
-				numEpisodes);
+				numEpisodes,
+				new JaccardDistance());
 		
 		List<Episode> episodes = new ArrayList<Episode>(numEpisodes);	//list to store results from Q-learning episodes
 		List<Double> episodeCoverage =  new ArrayList<Double>(numEpisodes);
@@ -238,14 +313,17 @@ public class RlbtMain{
 		if (alg.equalsIgnoreCase(BurlapAlgorithm.QLearning.toString())) {
 			List<Episode> episodes = executeQLearningTrainingOnLabRecruits();
 			return episodes;
+		}else if (alg.equalsIgnoreCase(BurlapAlgorithm.DeepQLearning.toString())) {
+			List<Episode> episodes = executeDeepQLearningTrainingOnLabRecruits();
+			return episodes;
 		}else {
 			throw new RuntimeException("Algorithm "+alg+" not supported");
 		}
-		
-		
+
+
 	}
-	
-	
+
+
 	/**
 	 * Execute a random training agent with parameters
 	 * @param line
@@ -262,19 +340,26 @@ public class RlbtMain{
 			burlapConfiguration.setParameterValue("burlap.qlearning.decayedepsilonstep", "1.0");
 			List<Episode> episodes = executeRandomTrainingOnLabRecruits();
 			return episodes;
+		}else if (alg.equalsIgnoreCase(BurlapAlgorithm.DeepQLearning.toString())) {
+			// DeepQLearningRL has no dedicated random episode method: forcing epsilon to 1
+			// makes the EpsilonGreedy policy always explore, which is equivalent.
+			burlapConfiguration.setParameterValue("burlap.qlearning.epsilonval", "1.0");
+			burlapConfiguration.setParameterValue("burlap.qlearning.decayedepsilonstep", "1.0");
+			List<Episode> episodes = executeDeepQLearningTrainingOnLabRecruits();
+			return episodes;
 		}else {
 			throw new RuntimeException("Algorithm "+alg+" not supported");
 		}
-		
-		
+
+
 	}
-	
+
 	/**
 	 * Execute training accordingly with parameters
 	 * @param line
 	 * @param options
-	 * @throws FileNotFoundException 
-	 * @throws InterruptedException 
+	 * @throws FileNotFoundException
+	 * @throws InterruptedException
 	 */
 	private Episode executeTesting (CommandLine line, Options options) throws FileNotFoundException, InterruptedException {
 		// check algorithm and execute corresponding method
@@ -282,10 +367,13 @@ public class RlbtMain{
 		if (alg.equalsIgnoreCase(BurlapAlgorithm.QLearning.toString())) {
 			Episode episode = executeQLearningTestingOnLabRecruits();
 			return episode;
+		}else if (alg.equalsIgnoreCase(BurlapAlgorithm.DeepQLearning.toString())) {
+			Episode episode = executeDeepQLearningTestingOnLabRecruits();
+			return episode;
 		}else {
 			throw new RuntimeException("Algorithm "+alg+" not supported");
-		}	
-		
+		}
+
 	}
 
 	
@@ -310,7 +398,8 @@ public class RlbtMain{
 				(double)burlapConfiguration.getParameterValue("burlap.qlearning.gamma"), 
 				new RlbtHashableStateFactory(), 
 				(double)burlapConfiguration.getParameterValue("burlap.qlearning.qinit"), 
-				(double)burlapConfiguration.getParameterValue("burlap.qlearning.lr"));
+				(double)burlapConfiguration.getParameterValue("burlap.qlearning.lr"),
+				new JaccardDistance());
 		long startTime = System.currentTimeMillis();
 		
 		String qtablePath = outputDir + File.separator + "cqtable.ser";//(String)burlapConfiguration.getParameterValue("burlap.qlearning.out_qtable");
@@ -335,14 +424,64 @@ public class RlbtMain{
 	}
 
 
-
-	
 	/**
-	 * Perform post analysis on learning traces 
+	 * Execute testing accordingly with parameters
+	 * @throws FileNotFoundException
+	 * @throws InterruptedException
+	 */
+	private Episode executeDeepQLearningTestingOnLabRecruits () throws FileNotFoundException, InterruptedException {
+		/*initialize RL environment*/
+		LabRecruitsRLEnvironment labRecruitsRlEnvironment = new LabRecruitsRLEnvironment(lrConfiguration, new JaccardDistance());
+
+		System.out.println("Initializing domain. Opening level :"+lrConfiguration.getParameterValue("labrecruits.level_name"));
+		DomainGenerator lrDomainGenerator = new LabRecruitsDomainGenerator();
+		final SADomain domain = (SADomain) lrDomainGenerator.generateDomain();
+
+		int maxActionsPerEpisode = (int)lrConfiguration.getParameterValue("labrecruits.max_actions_per_episode");
+		/*create Reinforcement Learning (Deep Q-learning) agent*/
+		String levelNameT = (String) lrConfiguration.getParameterValue("labrecruits.level_name");
+		String levelFolderT = (String) lrConfiguration.getParameterValue("labrecruits.level_folder");
+		List<String> entityIdsT = LabRecruitsRLEnvironment.loadEntityIds(levelNameT, levelFolderT);
+		DeepQLearningRL agent = new DeepQLearningRL(domain,
+				(double) burlapConfiguration.getParameterValue("burlap.qlearning.gamma"),
+				entityIdsT,
+				(double) burlapConfiguration.getParameterValue("burlap.qlearning.dqn_lr"),
+				0.0,   // epsilon = 0: always greedy during testing
+				0.0,   // no decay
+				maxActionsPerEpisode,
+				0.0,   // epsilonMin irrelevant during testing
+				(int) burlapConfiguration.getParameterValue("burlap.network.hidden_size"));
+
+		String qnetworkPath = outputDir + File.separator + "qnetwork.ser";
+		agent.deserializeModel(qnetworkPath);
+		agent.printNetworkSummary(System.out);
+
+		System.out.println("Start testing agent");
+		int numTestingEpisodes=10;
+		for(int i = 0; i < numTestingEpisodes; i++){
+			labRecruitsRlEnvironment.startAgentEnvironment();
+
+			Episode episode = agent.testDeepQLearningAgent(labRecruitsRlEnvironment, maxActionsPerEpisode);
+			System.out.println("Finished Episode = "+ (i));
+			labRecruitsRlEnvironment.CalculateEpisodeCoverage();
+			labRecruitsRlEnvironment.CalculateGlobalCoverageAfterTraining();
+			labRecruitsRlEnvironment.CalculateConnectionCoverage();
+			labRecruitsRlEnvironment.resetStateMemory();   // reset state buffer at the beginning of an episode
+			labRecruitsRlEnvironment.stopAgentEnvironment();  /*stop RL agent environment*/
+		}
+		Episode episode1 = agent.testDeepQLearningAgent(labRecruitsRlEnvironment, maxActionsPerEpisode);
+		return episode1;
+	}
+
+
+
+
+	/**
+	 * Perform post analysis on learning traces
 	 * @param line
 	 * @param options
-	 * @throws InterruptedException 
-	 * @throws FileNotFoundException 
+	 * @throws InterruptedException
+	 * @throws FileNotFoundException
 	 */
 	private List<Episode> postAnalysisLearningTraces (CommandLine line, Options options) throws FileNotFoundException, InterruptedException {
 		// check algorithm and execute corresponding method
@@ -351,11 +490,14 @@ public class RlbtMain{
 		if (alg.equalsIgnoreCase(BurlapAlgorithm.QLearning.toString())) {
 			List<Episode> episodes = executeQLearningTrainingOnLabRecruits();
 			return episodes;
+		}else if (alg.equalsIgnoreCase(BurlapAlgorithm.DeepQLearning.toString())) {
+			List<Episode> episodes = executeDeepQLearningTrainingOnLabRecruits();
+			return episodes;
 		}else {
 			throw new RuntimeException("Algorithm "+alg+" not supported");
 		}
-		
-		
+
+
 	}
 	
 	
@@ -428,8 +570,8 @@ public class RlbtMain{
         }
         
         if (line.hasOption("help")) {
-        	String header = "If not arguments are provided, by default: burlapConfig=burlap.config and "
-        			+ "sutConfig=buttons_doors_1.config will be used";
+        	String header = "If not arguments are provided, by default: burlapConfig=burlap_test.config and "
+        			+ "sutConfig=lrLevelSingleAgent.config will be used";
         	String footer = "";
         	HelpFormatter formatter = new HelpFormatter();
         	formatter.printHelp("rl", header, options, footer, true);

@@ -37,21 +37,28 @@ public abstract class Configuration {
 			return false;
 		}else {
 			Object currentValue = parameters.get(parameterName);
-			
+
+			/* Properties strips whitespace before a value but keeps whatever follows it,
+			 * so a trailing space in the .config file reaches us inside the string. It is
+			 * invisible in an editor and Integer.parseInt rejects it ("20 " is not a
+			 * number), while Double.parseDouble happens to tolerate it: the same typo
+			 * would crash on one key and pass silently on the next. Trim once, here. */
+			String text = (value instanceof String) ? ((String) value).trim() : String.valueOf(value);
+
 			if (currentValue instanceof Double) {
-				parameters.put(parameterName, Double.parseDouble((String) value));
+				parameters.put(parameterName, Double.parseDouble(text));
 				return true;
 			}
 			if (currentValue instanceof Integer) {
-				parameters.put(parameterName, Integer.parseInt((String) value));
+				parameters.put(parameterName, Integer.parseInt(text));
 				return true;
 			}
 			if (currentValue instanceof Boolean) {
-				parameters.put(parameterName, Boolean.parseBoolean((String) value));
+				parameters.put(parameterName, Boolean.parseBoolean(text));
 				return true;
 			}
 			if (currentValue instanceof String) {
-				parameters.put(parameterName, (String) value);
+				parameters.put(parameterName, text);
 				return true;
 			}
 			

@@ -10,7 +10,7 @@ public class LRConfiguration extends Configuration{
 		parameters.put("labrecruits.level_name", "buttons_doors_1");
 		parameters.put("labrecruits.level_folder", "src/test/resources/levels/");
 		
-		parameters.put("labrecruits.execution_folder", ".");
+		parameters.put("labrecruits.execution_folder", "sut");
 		
 		parameters.put("labrecruits.agent_id", "agent1");
 		parameters.put("labrecruits.use_graphics",true);

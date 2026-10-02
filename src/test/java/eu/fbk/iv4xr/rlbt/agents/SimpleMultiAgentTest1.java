@@ -35,7 +35,7 @@ class SimpleMultiAgentTest1 {
     	//TestSettings.USE_SERVER_FOR_TEST = false ;
     	// Uncomment this to make the game's graphic visible:
     	 TestSettings.USE_GRAPHICS = false ;
-    	String labRecruitesExeRootDir = System.getProperty("user.dir") ;
+    	String labRecruitesExeRootDir = System.getProperty("user.dir") + "/sut" ;
     	labRecruitsTestServer = TestSettings.start_LabRecruitsTestServer(labRecruitesExeRootDir) ;
     }
 
