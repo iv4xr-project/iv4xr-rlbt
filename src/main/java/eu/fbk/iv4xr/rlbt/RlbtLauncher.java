@@ -12,6 +12,7 @@ import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.time.Duration;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Properties;
 
@@ -100,7 +101,17 @@ public class RlbtLauncher {
 		// Start MineFlayer Testbench in server mode
 		String npm = System.getProperty("os.name").toLowerCase().contains("win") ? "npm.cmd" : "npm";
 		File workDir = new File("sut/minecraft/mineflayer-testbench");
-		ProcessBuilder pb = new ProcessBuilder(List.of(npm, "run", "start"));
+		List<String> command = new ArrayList<>(List.of(npm, "run", "start"));
+		if (system.equals("exploration")) {
+			// exploration observes every target from anywhere: its testbench config widens
+			// the /status scan to the whole level, combat keeps the testbench defaults
+			File testbenchConfig = new File(gameConfig.getProperty("game.mineExplorationTestbenchConfig",
+					"src/test/resources/configurations/testbench_exploration.json"));
+			if (!testbenchConfig.isFile())
+				throw new IllegalArgumentException("Testbench config not found: " + testbenchConfig.getAbsolutePath());
+			command.add("config=" + testbenchConfig.getAbsolutePath().replace('\\', '/'));
+		}
+		ProcessBuilder pb = new ProcessBuilder(command);
 		pb.directory(workDir);
 		pb.inheritIO();
 		System.out.println("Starting mineflayer-testbench (server mode)");

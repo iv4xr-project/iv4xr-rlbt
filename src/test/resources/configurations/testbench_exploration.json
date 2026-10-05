@@ -1,0 +1,8 @@
+{
+    "scan": {
+        "radiusHorizontal": 30,
+        "heightAboveBot": 2,
+        "heightBelowBot": 1,
+        "entityRadius": 35
+    }
+}
