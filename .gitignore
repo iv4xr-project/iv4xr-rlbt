@@ -15,6 +15,7 @@ buildNumber.properties
 # Personal work notes
 RIPRENDI.md
 UPDATE.md
+CLAUDE.md
 
 # JetBrains -- IDE state is per-developer, none of it belongs in the repo
 .idea/
