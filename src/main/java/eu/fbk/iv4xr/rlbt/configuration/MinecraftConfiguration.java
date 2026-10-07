@@ -14,6 +14,8 @@ public class MinecraftConfiguration extends Configuration {
 		parameters.put("mine.testbenchUrl", "http://localhost:3000");
 		parameters.put("mine.max_ticks_per_action", 120);
 		parameters.put("mine.max_actions_per_episode", 30);
+		// exploration only: ticks waited after every action, for the effects that are not immediate
+		parameters.put("mine.wait_ticks_after_action", 10);
 		parameters.put("mine.mob_tag", "mob1");
 		parameters.put("mine.reward_type", "CoverageOriented");
 		parameters.put("mine.weapon", "iron_sword");

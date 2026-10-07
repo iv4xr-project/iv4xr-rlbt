@@ -1,0 +1,11 @@
+{
+  "cauldron": ["cauldron", "water_cauldron", "lava_cauldron", "powder_snow_cauldron"],
+  "anvil": ["anvil", "chipped_anvil", "damaged_anvil"],
+  "copper_door": [
+    "copper_door", "exposed_copper_door", "weathered_copper_door", "oxidized_copper_door",
+    "waxed_copper_door", "waxed_exposed_copper_door", "waxed_weathered_copper_door",
+    "waxed_oxidized_copper_door"
+  ],
+  "cake": ["cake", "candle_cake"],
+  "air": ["air", "stone", "acacia_log", "stripped_acacia_log"]
+}

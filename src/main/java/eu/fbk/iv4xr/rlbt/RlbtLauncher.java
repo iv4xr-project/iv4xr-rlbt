@@ -83,7 +83,11 @@ public class RlbtLauncher {
 		if (system.equals("exploration") && baselineFlag)
 			throw new IllegalArgumentException(
 					"game.mineAgentUseBaseline=true is only supported by game.mineAgentSystem=combat");
-		String sutConfigPath = gameConfig.getProperty("game.mineAgentSutConfig");
+		// exploration has its own SUT config: another level, longer episodes
+		String sutConfigPath = system.equals("exploration")
+				? gameConfig.getProperty("game.mineExplorationSutConfig",
+						"src/test/resources/configurations/mineExplorer.config")
+				: gameConfig.getProperty("game.mineAgentSutConfig");
 		String mineBurlapConfig = gameConfig.getProperty("game.mineAgentBurlapConfig", burlapConfig);
 		Properties mineConfig = new Properties();
 		try (InputStream in = new FileInputStream(sutConfigPath)) {
@@ -110,6 +114,11 @@ public class RlbtLauncher {
 			if (!testbenchConfig.isFile())
 				throw new IllegalArgumentException("Testbench config not found: " + testbenchConfig.getAbsolutePath());
 			command.add("config=" + testbenchConfig.getAbsolutePath().replace('\\', '/'));
+			// and its own BURLAP config: the network is sized on the level, not on the combat state
+			mineBurlapConfig = gameConfig.getProperty("game.mineExplorationBurlapConfig",
+					"src/test/resources/configurations/burlap_minecraft_exploration.config");
+			if (!new File(mineBurlapConfig).isFile())
+				throw new IllegalArgumentException("BURLAP config not found: " + new File(mineBurlapConfig).getAbsolutePath());
 		}
 		ProcessBuilder pb = new ProcessBuilder(command);
 		pb.directory(workDir);

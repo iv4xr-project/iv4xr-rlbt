@@ -1,6 +1,6 @@
 candle 10,flint_and_steel,iron_shovel,water_bucket, minecraft:splash_potion[minecraft:potion_contents=water],iron_axe,honeycomb 64, diamond_sword, netherite_sword,,,
-lava_bucket,water_bucket,powder_snow_bucket,glass_bottle 3,potion[potion_contents=water],potion[potion_contents=water],potion[potion_contents=water],,,,,
-pumpkin_pie 64,iron_helmet," iron_helmet[damage=60,custom_name=""damaged""]",,,trial_key,ominous_trial_key,,,,,
+lava_bucket,water_bucket,powder_snow_bucket,glass_bottle 3,potion[potion_contents=water],potion[potion_contents=water],,,,,,
+pumpkin_pie 64,iron_helmet," iron_helmet[damage=60,custom_name=""damaged""]",lava_bucket,powder_snow_bucket,trial_key,ominous_trial_key,,,,,
 golden_pickaxe,wooden_pickaxe,stone 64,acacia_log 64,cod 19,wooden_sword, stone_sword, iron_sword,,,,
 /xp add @s 10 levels,,,,,,,,,,,
 |,grass_block,grass_block,grass_block,grass_block,grass_block,grass_block,grass_block,grass_block,grass_block,grass_block,grass_block
@@ -45,11 +45,11 @@ lever[face=floor]^lshelf_power,lever[face=floor]^mshelf_power,lever[face=floor]^
 ,,,,,,,,,,,
 ,structure_void,,,,,,,,,,
 structure_void,candle^candle,structure_void,,@player,,,,,,,
-,structure_void,,,,,,,,,,cauldron^lava_cauldron
+,structure_void,,,,,,,,,,
 ,,,,,,,,,,,
-,,,,,,,,,,,cauldron^water_cauldron
+,,,,,,,,,,,cauldron^cauldron
 ,,,,,,,,,,,
-,,,,,,,,,,,cauldron^powder_snow_cauldron
+,,,,,,,,,,,
 ,,,,,,,,,,,
 ,,,,waxed_oxidized_copper_door^door,lever[face=floor]^lever,,,,,,
 ,,,,,,,,,,,
@@ -85,6 +85,7 @@ structure_void,candle^candle,structure_void,,@player,,,,,,,
 ,,,,,,,,,,,
 ,,,,,,,,,,,
 ,,@minecart,,,,,,,,,
+,,,,,,,,,,,
 ,,,,,,,,,,,
 ,,lever^switch,,,,,,,,,
 ,,iron_block,,,,,,,,,
