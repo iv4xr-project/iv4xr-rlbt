@@ -65,6 +65,11 @@ public class MineExplorer {
 
 	/** A tag with this prefix marks the block to place on: its target is the cell above it. */
 	static final String PLACE_ON_PREFIX = "place_";
+	static final String PLACE_ON_ACTION = "placedOn";
+
+	/** Blocks that an action of the agent can make disappear (a cake once eaten): the only
+	 *  ones, with the cells that start empty, to have air in their coverage domain. */
+	static final Set<String> CONSUMABLE_BLOCKS = Set.of("cake");
 
 	/** Block state properties fixed when the block is placed: no action changes them, so
 	 *  they are left out of the coverage domain. */
@@ -104,11 +109,14 @@ public class MineExplorer {
 		printTargetDomains(domains);
 
 		// The action list, in a fixed order: every (action, target) pair, incompatible ones
-		// included, then one select per item and one for the empty hand
+		// included (but a block to place on only gets the placing on it), then one select per
+		// item and one for the empty hand
 		List<ExplorerAction> actions = new ArrayList<>();
 		for (String action : TARGET_ACTIONS)
 			for (String target : targets)
-				actions.add(new ExplorerAction(action, target));
+				if (!target.startsWith(PLACE_ON_PREFIX) || action.equals(PLACE_ON_ACTION))
+					actions.add(new ExplorerAction(action, target));
+		int targetActions = actions.size();
 		TreeSet<String> items = new TreeSet<>(EXTRA_ITEMS);
 		Object inventory = start.elements.get(AGENT_ID).properties.get(StatusToWorldModel.INVENTORY_PROP);
 		if (inventory instanceof Map)
@@ -116,8 +124,9 @@ public class MineExplorer {
 		for (String item : items)
 			actions.add(new ExplorerAction(SELECT, item));
 		actions.add(new ExplorerAction(SELECT, EMPTY_HAND));
-		System.out.println("Actions generated: " + actions.size() + " = " + TARGET_ACTIONS.size() + " actions x "
-				+ targets.size() + " targets + " + (items.size() + 1) + " " + SELECT + " " + items);
+		System.out.println("Actions generated: " + actions.size() + " = " + targetActions + " on the "
+				+ targets.size() + " targets (" + TARGET_ACTIONS.size() + " actions each, only " + PLACE_ON_ACTION
+				+ " on a " + PLACE_ON_PREFIX + " tag) + " + (items.size() + 1) + " " + SELECT + " " + items);
 
 		// minecraft-results/<level>/exploration/<systemtime>
 		File sessionDir = new File(outputDir);
@@ -223,8 +232,9 @@ public class MineExplorer {
 
 	/** The coverage domain of each block target: the names of the family of its block (the block
 	 *  alone when it has no family), each with its state properties (asked to the testbench)
-	 *  without the fixed ones, plus air, since a block may disappear (eaten, blown up). An
-	 *  empty cell takes the family of air: the blocks that can be placed in it. */
+	 *  without the fixed ones. An empty cell takes the family of air: the blocks that can be
+	 *  placed in it. Air itself is in the domain of an empty cell and of a consumable block
+	 *  only: nothing else can disappear, the agent does not mine and mobs do not grief. */
 	private static Map<String, TargetDomain> targetDomains(MinecraftEnv env, WorldModel wom,
 			Map<String, Vec3> tagPositions, Map<String, List<String>> families) {
 		Map<String, Map<String, List<Object>>> propertiesByBlock = new HashMap<>(); // one request per block type
@@ -235,7 +245,8 @@ public class MineExplorer {
 			WorldEntity we = targetBlock(wom, tag.getKey(), tag.getValue());
 			String current = we == null ? TargetDomain.AIR : we.type;
 			TargetDomain domain = new TargetDomain(tag.getKey());
-			for (String name : families.getOrDefault(current, List.of(current))) {
+			List<String> family = families.getOrDefault(current, List.of(current));
+			for (String name : family) {
 				if (name.equals(TargetDomain.AIR))
 					continue;
 				Map<String, List<Object>> properties = new LinkedHashMap<>(
@@ -243,7 +254,8 @@ public class MineExplorer {
 				properties.keySet().removeAll(FIXED_PROPERTIES);
 				domain.names.put(name, properties);
 			}
-			domain.names.put(TargetDomain.AIR, Map.of());
+			if (we == null || family.stream().anyMatch(CONSUMABLE_BLOCKS::contains))
+				domain.names.put(TargetDomain.AIR, Map.of());
 			domains.put(tag.getKey(), domain);
 		}
 		return domains;
