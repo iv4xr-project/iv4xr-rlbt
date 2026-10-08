@@ -73,7 +73,7 @@ class ExplorerEnvironment implements Environment {
 		maxActionsPerEpisode = (int) configuration.getParameterValue("mine.max_actions_per_episode");
 		waitTicksAfterAction = (int) configuration.getParameterValue("mine.wait_ticks_after_action");
 		env.tagUuids.forEach((tag, uuid) -> uuidTags.put(uuid, tag));
-		write("episode,step,action,approach,outcome,changed,reward,covered,changes", false);
+		write("episode,step,action,hand,approach,outcome,changed,reward,covered,changes", false);
 	}
 
 	int maxActionsPerEpisode() {
@@ -182,7 +182,9 @@ class ExplorerEnvironment implements Environment {
 				+ (approach.isEmpty() ? "" : " | approach " + approach) + " | action " + outcome
 				+ " | reward " + lastReward + visits
 				+ " | " + (changes.isEmpty() ? "no change" : "changes: " + String.join("; ", changes)));
-		write(episode + "," + steps + "," + action.actionName() + "," + approach + "," + quoted(outcome) + ","
+		// the item held when the action started: what a change of a target has to be linked to
+		String hand = before.heldItem == null ? MineExplorer.EMPTY_HAND : before.heldItem;
+		write(episode + "," + steps + "," + action.actionName() + "," + hand + "," + approach + "," + quoted(outcome) + ","
 				+ hasEffect(changes) + "," + lastReward + "," + coverage.covered() + ","
 				+ quoted(String.join("; ", changes)), true);
 
