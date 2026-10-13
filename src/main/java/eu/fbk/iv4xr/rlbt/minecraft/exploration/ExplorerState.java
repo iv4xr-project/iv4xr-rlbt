@@ -14,6 +14,9 @@ import eu.iv4xr.framework.spatial.Vec3;
  *  the block of each block target and the entities of the level. */
 class ExplorerState implements State {
 
+	/** Ends the fact of an entity that is moving. */
+	static final String MOVING = " moving";
+
 	/** An observed entity: a tagged one, or an untagged one that belongs to the level. */
 	static class Entity {
 		final String tag;   // null when untagged
@@ -91,7 +94,7 @@ class ExplorerState implements State {
 				name = entity.type + (n == 1 ? "" : "#" + n);
 			}
 			facts.put("entity:" + name, entity == null ? "gone" : entity.type + "@" + cell(entity.position)
-					+ properties(entity.properties) + (entity.moving ? " moving" : ""));
+					+ properties(entity.properties) + (entity.moving ? MOVING : ""));
 		}
 		return facts;
 	}

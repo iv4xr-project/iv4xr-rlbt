@@ -216,14 +216,26 @@ class ExplorerEnvironment implements Environment {
 
 	/** Whether any of the changes can be an effect of the action. An untagged entity is left
 	 *  out: it also changes on its own (a rolling minecart, a fading cloud), which would make
-	 *  every action look effective while it lasts. */
+	 *  every action look effective while it lasts. So is a tagged entity that only starts or
+	 *  stops moving: a creeper standing still flips between the two on its own. */
 	private boolean hasEffect(List<String> changes) {
 		for (String change : changes) {
 			String name = change.substring(0, change.indexOf(": "));
-			if (!name.startsWith("entity:") || uuidTags.containsValue(name.substring("entity:".length())))
+			if (!name.startsWith("entity:"))
+				return true;
+			if (!uuidTags.containsValue(name.substring("entity:".length())))
+				continue;
+			String[] values = change.substring(name.length() + 2).split(" -> ", 2);
+			if (!withoutMoving(values[0]).equals(withoutMoving(values[1])))
 				return true;
 		}
 		return false;
+	}
+
+	/** The fact of an entity without its moving mark. */
+	private static String withoutMoving(String entity) {
+		return entity.endsWith(ExplorerState.MOVING)
+				? entity.substring(0, entity.length() - ExplorerState.MOVING.length()) : entity;
 	}
 
 	/** The reward collected so far in the episode. */
