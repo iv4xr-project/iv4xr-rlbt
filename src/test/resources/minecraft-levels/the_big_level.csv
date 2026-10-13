@@ -2,7 +2,7 @@ candle 10,flint_and_steel,iron_shovel,water_bucket, minecraft:splash_potion[mine
 lava_bucket,water_bucket,powder_snow_bucket,glass_bottle 3,potion[potion_contents=water],potion[potion_contents=water],,,,,,
 pumpkin_pie 64,iron_helmet," iron_helmet[damage=60,custom_name=""damaged""]",lava_bucket,powder_snow_bucket,trial_key,ominous_trial_key,,,,,
 golden_pickaxe,wooden_pickaxe,stone 64,acacia_log 64,cod 19,wooden_sword, stone_sword, iron_sword,,,,
-/xp add @s 10 levels,/gamerule mob_griefing false,,,,,,,,,,
+/xp add @s 10 levels,/gamerule mob_griefing false,/gamerule fire_spread_radius_around_player 0,/gamerule spawn_mobs false,,,,,,,,
 |,grass_block,grass_block,grass_block,grass_block,grass_block,grass_block,grass_block,grass_block,grass_block,grass_block,grass_block
 grass_block,grass_block,grass_block,grass_block,grass_block,grass_block,grass_block,grass_block,grass_block,grass_block,grass_block,grass_block
 grass_block,grass_block,grass_block,grass_block,grass_block,grass_block,grass_block,grass_block,grass_block,grass_block,grass_block,grass_block
@@ -35,7 +35,7 @@ iron_block,iron_block,iron_block,iron_block,iron_block,grass_block,tuff_bricks,w
 iron_block,iron_block,iron_block,iron_block,iron_block,grass_block,tuff_bricks,tuff_bricks,tuff_bricks,grass_block,grass_block,grass_block
 |,,,,,,,,,,,
 oak_shelf[facing=south]^lshelf,oak_shelf[facing=south]^mshelf,oak_shelf[facing=south]^rshelf,,,,,,,,,
-lever[face=floor]^lshelf_power,lever[face=floor]^mshelf_power,lever[face=floor]^rshelf_power,,,,,anvil^anvil,,,,
+lever[face=floor]^lshelf_power,lever[face=floor]^mshelf_power,lever[face=floor]^rshelf_power,,,,,,,,,
 ,,,,,,,,,,,
 ,,,,,^wood,,,,,cake^cake,
 ,,,^stone,,,,,,,,
