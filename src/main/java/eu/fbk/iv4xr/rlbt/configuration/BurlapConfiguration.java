@@ -29,6 +29,10 @@ public class BurlapConfiguration extends Configuration{
 		parameters.put("burlap.algorithm", "QLearning");
 		parameters.put("burlap.qlearning.decayedepsilonstep", 0.95);
 		parameters.put("burlap.network.hidden_size",(int) 64);
+		// testing mode of the Minecraft exploration: session directory to load, episodes, epsilon
+		parameters.put("burlap.testing.model", "");
+		parameters.put("burlap.testing.num_of_episodes",(int) 10);
+		parameters.put("burlap.testing.epsilon",(double) 0.05);
 		/*
 		 * Replay buffer and target network. The defaults below are sized for LabRecruits,
 		 * whose episodes run up to 200 actions; a SUT with much shorter episodes has to

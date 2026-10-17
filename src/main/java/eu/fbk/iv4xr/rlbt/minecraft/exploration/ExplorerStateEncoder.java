@@ -197,6 +197,23 @@ class ExplorerStateEncoder implements StateEncoder {
 		return sb.toString();
 	}
 
+	/** The vector back from the text of active, e.g. to reload a Q-table. */
+	float[] vector(String active) {
+		float[] features = new float[labels.size()];
+		for (String token : active.split(" ")) {
+			if (token.isEmpty())
+				continue;
+			int colon = token.lastIndexOf(':');
+			if (index.containsKey(token))
+				set(features, token, 1f);
+			else if (colon > 0 && index.containsKey(token.substring(0, colon)))
+				set(features, token.substring(0, colon), Float.parseFloat(token.substring(colon + 1)));
+			else
+				throw new IllegalArgumentException("Unknown feature " + token + ": not the same level?");
+		}
+		return features;
+	}
+
 	/** Every label with the features it takes, e.g. for the block targets of a level. */
 	Map<String, Integer> sizes() {
 		Map<String, Integer> sizes = new TreeMap<>();

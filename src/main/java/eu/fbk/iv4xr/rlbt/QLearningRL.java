@@ -101,6 +101,17 @@ public class QLearningRL extends MDPSolver implements QProvider, LearningAgent, 
 	 * Decayed Epsilon value (step to control epsilon steps)
 	 */
 	protected double 											decayedEpsilonstep;
+
+	/** Epsilon does not decay below this value */
+	protected double 											epsilonMin = 0.1;
+
+	public double getEpsilongr() {
+		return epsilongr;
+	}
+
+	public void setEpsilonMin(double epsilonMin) {
+		this.epsilonMin = epsilonMin;
+	}
 	/**
 	 * The learning rate function used.
 	 */
@@ -708,8 +719,8 @@ public class QLearningRL extends MDPSolver implements QProvider, LearningAgent, 
 			// NOTE: the guard means "empty observation". It fits LabRecruits, whose state is
 			// a bag of observed entities. A Minecraft state always holds its feature object,
 			// so it never fires there: a failed observation is caught by the environment.
-			OOState curObservation = (OOState) (curState.s());
-			if(curObservation.numObjects()==0) {
+			// the Minecraft exploration state is not an OOState: no check for it
+			if(curState.s() instanceof OOState && ((OOState) curState.s()).numObjects()==0) {
 				System.out.println(" BUG : Empty Observation of RL active agent. Ending Episode...");
 				break;
 			}
@@ -800,8 +811,8 @@ public class QLearningRL extends MDPSolver implements QProvider, LearningAgent, 
 		System.out.println("Reward sequence "+ea.rewardSequence.size()+"  ="+ea.rewardSequence);
 		System.out.println("Decayedepsilon val = "+decayedEpsilonstep);
 		System.out.println("Epsilon value = "+ this.epsilongr);
-		if(this.epsilongr > 0.1)
-			this.epsilongr = this.epsilongr-decayedEpsilonstep;
+		if(this.epsilongr > epsilonMin)
+			this.epsilongr = Math.max(epsilonMin, this.epsilongr-decayedEpsilonstep);
 			//this.epsilongr = this.epsilongr*decayedEpsilonstep;  // multiply with a value <1 to decay the epsilon value
 		System.out.println("Decay Epsilo Value : End of an episode = "+this.epsilongr);
 		//initialize learningpolicy with new reduced epsilon value in order to reduce exploration after each episode

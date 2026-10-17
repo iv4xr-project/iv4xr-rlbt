@@ -11,6 +11,7 @@ import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Random;
 import java.util.Set;
 import java.util.TreeMap;
 import java.util.TreeSet;
@@ -20,14 +21,23 @@ import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 
 import burlap.behavior.singleagent.Episode;
+import burlap.behavior.singleagent.learning.LearningAgent;
+import burlap.behavior.singleagent.learning.tdmethods.QLearningStateNode;
+import burlap.behavior.valuefunction.QValue;
+import burlap.mdp.core.action.Action;
+import burlap.mdp.core.state.State;
+import burlap.mdp.singleagent.environment.EnvironmentOutcome;
 import burlap.mdp.singleagent.SADomain;
 import eu.fbk.iv4xr.minecraftlib.MinecraftAgent;
 import eu.fbk.iv4xr.minecraftlib.MinecraftEnv;
 import eu.fbk.iv4xr.minecraftlib.MinecraftState;
 import eu.fbk.iv4xr.minecraftlib.StatusToWorldModel;
 import eu.fbk.iv4xr.rlbt.DeepQLearningRL;
+import eu.fbk.iv4xr.rlbt.QLearningRL;
+import eu.fbk.iv4xr.rlbt.RlbtMain.BurlapAlgorithm;
 import eu.fbk.iv4xr.rlbt.configuration.BurlapConfiguration;
 import eu.fbk.iv4xr.rlbt.configuration.MinecraftConfiguration;
+import eu.fbk.iv4xr.rlbt.distance.NoStateSimilarity;
 import eu.fbk.iv4xr.rlbt.minecraft.MinecraftSampleModel;
 import eu.iv4xr.framework.mainConcepts.TestDataCollector;
 import eu.iv4xr.framework.mainConcepts.WorldEntity;
@@ -38,49 +48,33 @@ import eu.iv4xr.framework.spatial.Vec3;
  *  Specialized in coverage of the environment based on the available actions
  *  on the level. */
 public class MineExplorer {
+
+	static final String AGENT_ID = "Bot";
+	public static final String REWARD_TYPE = "CoverageOriented";
+	static final double MOVING_SPEED = 0.01;
+
+	static MinecraftConfiguration mineConfiguration = new MinecraftConfiguration();
+	static BurlapConfiguration burlapConfiguration = new BurlapConfiguration();
 	static String defaultTestbenchUrl = "http://localhost:3000";
 	static String defaultLevelCsv = "src/test/resources/minecraft-levels/the_big_level.csv";
 	static String defaultBlockFamilies = "src/test/resources/configurations/block_families.json";
 	static String currentDir = System.getProperty("user.dir");
 	static String outputDir = currentDir + File.separator + "rlbt-files" + File.separator + "minecraft-results";
 	public static long systemtime = System.nanoTime();
+	static BurlapAlgorithm algorithm;
+	static boolean testing;   // game.mode=testing: the learned Q-values are used, not updated
+	static final Random RANDOM = new Random();
 
-	static MinecraftConfiguration mineConfiguration = new MinecraftConfiguration();
-	static BurlapConfiguration burlapConfiguration = new BurlapConfiguration();
-
-	static final String AGENT_ID = "Bot";
-	public static final String REWARD_TYPE = "CoverageOriented";
-
-	/** Actions of MinecraftGoalLib whose only parameter is a target tag. Reaching the target is
-	 *  not one of them: it is the first step of each. Mining is left out on purpose: a broken
-	 *  target is lost for the rest of the episode. */
-	static final List<String> TARGET_ACTIONS = List.of(
-			"clicked", "placed", "placedOn", "attacked", "usedOnEntity");
-
+	// Target actions taken from the available in minecraftlib
+	static final List<String> TARGET_ACTIONS = List.of("clicked", "placed", "placedOn", "attacked", "usedOnEntity");
+	static final Set<String> CONSUMABLE_BLOCKS = Set.of("cake");
+	static final List<String> EXTRA_ITEMS = List.of("bucket"); 	// Items that are not in the starting inventory but appear during an episode
+	static final Set<String> FIXED_PROPERTIES = Set.of("facing", "half", "hinge", "face", "axis", "rotation", "shape", "type", "ominous"); 	// Block state properties fixed when the block is placed: left out of the coverage domain
+	static final Set<String> ENTITY_ID_PROPERTIES = Set.of("name", "uuid", "mcEntityId");
 	static final String SELECT = "select";
 	static final String EMPTY_HAND = "empty";
-
-	/** Items that are not in the starting inventory but appear during an episode, to select too. */
-	static final List<String> EXTRA_ITEMS = List.of("bucket");
-
-	/** A tag with this prefix marks the block to place on: its target is the cell above it. */
 	static final String PLACE_ON_PREFIX = "place_";
 	static final String PLACE_ON_ACTION = "placedOn";
-
-	/** Blocks that an action of the agent can make disappear (a cake once eaten): the only
-	 *  ones, with the cells that start empty, to have air in their coverage domain. */
-	static final Set<String> CONSUMABLE_BLOCKS = Set.of("cake");
-
-	/** Block state properties fixed when the block is placed: no action changes them, so
-	 *  they are left out of the coverage domain. */
-	static final Set<String> FIXED_PROPERTIES = Set.of(
-			"facing", "half", "hinge", "face", "axis", "rotation", "shape", "type", "ominous");
-
-	/** Entity properties that only identify the entity: left out of its observed state. */
-	static final Set<String> ENTITY_ID_PROPERTIES = Set.of("name", "uuid", "mcEntityId");
-
-	/** Horizontal speed, in blocks per tick, above which an entity counts as moving. */
-	static final double MOVING_SPEED = 0.01;
 
 	public void explore(String testbenchUrl, String levelCsv) {
 		System.out.println("-------------------------- Starting exploration on Minecraft ---------------------");
@@ -99,18 +93,19 @@ public class MineExplorer {
 			throw new RuntimeException("Unable to read the level " + levelCsv, e);
 		}
 
-		// Targets: every tag of the level, blocks and entities
-		TreeSet<String> targets = new TreeSet<>(tagPositions.keySet());
+
+		// Save all the targets of the level
+		TreeSet<String> targets = new TreeSet<>(tagPositions.keySet()); // Every tag of the level (blocks and entities)
 		targets.addAll(env.tagUuids.keySet());
-		System.out.println("Targets found (" + targets.size() + "): " + targets);
+		System.out.println("Targets found in the level (" + targets.size() + "): " + targets);
+
 		WorldModel start = env.observe(AGENT_ID);
 		Map<String, TargetDomain> domains = targetDomains(env, start, tagPositions,
 				loadBlockFamilies(defaultBlockFamilies));
 		printTargetDomains(domains);
 
-		// The action list, in a fixed order: every (action, target) pair, incompatible ones
-		// included (but a block to place on only gets the placing on it), then one select per
-		// item and one for the empty hand
+
+		// The action list, in a fixed order
 		List<ExplorerAction> actions = new ArrayList<>();
 		for (String action : TARGET_ACTIONS)
 			for (String target : targets)
@@ -128,78 +123,153 @@ public class MineExplorer {
 				+ targets.size() + " targets (" + TARGET_ACTIONS.size() + " actions each, only " + PLACE_ON_ACTION
 				+ " on a " + PLACE_ON_PREFIX + " tag) + " + (items.size() + 1) + " " + SELECT + " " + items);
 
-		// minecraft-results/<level>/exploration/<systemtime>
+
+		// Write action list to outputDir
 		File sessionDir = new File(outputDir);
 		if (!sessionDir.exists() && !sessionDir.mkdirs())
 			throw new RuntimeException("Unable to create output directory: " + sessionDir);
 		writeActions(new File(sessionDir, "actions.csv"), actions, tagPositions);
-		ExplorerEnvironment environment = new ExplorerEnvironment(env, agent, tagPositions, domains, mineConfiguration,
-				new File(sessionDir, "transitions.csv"));
 
+		// Setup MineExplorer environment
+		ExplorerEnvironment environment = new ExplorerEnvironment(env, agent, tagPositions, domains, mineConfiguration, new File(sessionDir, "transitions.csv"));
 		ExplorerState seen = environment.observe(start);
 		ExplorerStateEncoder encoder = new ExplorerStateEncoder(domains, new ArrayList<>(items), seen, tagPositions);
 		System.out.println("State vector: " + encoder.describe() + "\n  features per label: " + encoder.sizes());
 		printLearner(encoder.inputSize(), actions.size());
-		DeepQLearningRL learner = createLearner(encoder, actions);
+		System.out.println("[observation]" + "\n  sees:   " + seen.describe() + "\n  vector: " + encoder.active(encoder.features(seen)));
 
-		System.out.println("[observation]"
-				+ "\n  sees:   " + seen.describe()
-				+ "\n  vector: " + encoder.active(encoder.features(seen)));
+		// Create the learner (DQN or Q-table): trained here, or loaded for testing
+		LearningAgent learner = createLearner(encoder, actions);
+		if (testing)
+			loadModel(learner, encoder, actions);
+		run(learner, environment, encoder, actions, sessionDir);
 
-		train(learner, environment, sessionDir);
 		env.quit(agent);
 	}
 
-	/** The training loop. An episode is run by the learner: it chooses an action
-	 *  (epsilon-greedy), has the environment execute it, stores the transition with its reward
-	 *  and trains the network on a batch of past ones, until the budget of actions is spent.
+	/** The training (or testing) loop. An episode is run by the learner: it chooses an action
+	 *  (epsilon-greedy), has the environment execute it and updates its Q-values (the DQN on a
+	 *  batch of past transitions, the Q-table on the last one), until the budget of actions is spent.
 	 *  Then the level is rebuilt. Every episode adds a row to episodeSummary.csv, refreshes the
-	 *  session coverage (coverage.csv, summary.txt) and saves the network, so an interrupted
-	 *  session keeps what it learned and measured. */
-	private static void train(DeepQLearningRL learner, ExplorerEnvironment environment, File sessionDir) {
-		int episodes = (int) burlapConfiguration.getParameterValue("burlap.num_of_episodes");
+	 *  session coverage (coverage.csv, summary.txt) and saves the network or the Q-table, so an
+	 *  interrupted session keeps what it learned and measured. In testing nothing is learned
+	 *  or saved: see testEpisode. */
+	private static void run(LearningAgent learner, ExplorerEnvironment environment, ExplorerStateEncoder encoder,
+			List<ExplorerAction> actionList, File sessionDir) {
+		int episodes = (int) burlapConfiguration.getParameterValue(
+				testing ? "burlap.testing.num_of_episodes" : "burlap.num_of_episodes");
 		String networkFile = sessionDir + File.separator + "qnetwork.ser";
+		DeepQLearningRL dqn = learner instanceof DeepQLearningRL ? (DeepQLearningRL) learner : null;
+		QLearningRL qTable = learner instanceof QLearningRL ? (QLearningRL) learner : null;
 		try (PrintStream summary = new PrintStream(new File(sessionDir, "episodeSummary.csv"))) {
 			summary.println("episode,actions,total_reward,null_actions,states_covered,session_states_covered,"
 					+ "states_total,epsilon,loss,time_ms");
-			int actions = 0;
+			int executed = 0;
 			long sessionTime = 0;
 			for (int i = 1; i <= episodes; i++) {
 				System.out.println("---------------- Episode " + i + "/" + episodes + " ----------------");
-				double epsilon = learner.getEpsilongr();   // the learner lowers it at the end of the episode
+				double epsilon = testing ? (double) burlapConfiguration.getParameterValue("burlap.testing.epsilon")
+						: dqn != null ? dqn.getEpsilongr() : qTable.getEpsilongr();   // the learner lowers it at the end of the episode
 				long startTime = System.currentTimeMillis();
-				Episode episode = learner.runLearningEpisode(environment, environment.maxActionsPerEpisode());
+				Episode episode = testing ? testEpisode(learner, environment, encoder, actionList, epsilon)
+						: learner.runLearningEpisode(environment, environment.maxActionsPerEpisode());
 				long elapsed = System.currentTimeMillis() - startTime;
 
 				// read before the reset, which starts the next episode and clears them
 				String row = i + "," + episode.actionSequence.size() + "," + environment.episodeReward() + ","
 						+ environment.episodeNullActions() + "," + environment.episodeCoverage() + ","
 						+ environment.sessionCoverage() + "," + environment.totalStates() + "," + epsilon + ","
-						+ learner.getLastTrainingLoss() + "," + elapsed;
+						+ (dqn != null && !testing ? dqn.getLastTrainingLoss() : "") + "," + elapsed;   // no loss for the Q-table
 				summary.println(row);
 				summary.flush();
 				System.out.println("Episode " + i + ": reward " + environment.episodeReward()
 						+ ", null actions " + environment.episodeNullActions() + "/" + episode.actionSequence.size()
 						+ ", states covered " + environment.episodeCoverage() + "/" + environment.totalStates()
 						+ " (session " + environment.sessionCoverage() + ")"
-						+ ", epsilon " + epsilon + ", time " + elapsed + " ms");
-				actions += episode.actionSequence.size();
+						+ ", epsilon " + epsilon + ", time " + elapsed + " ms"
+						+ (qTable != null ? ", Q-table states " + qTable.getqFunction().size() : ""));
+				executed += episode.actionSequence.size();
 				sessionTime += elapsed;
 				environment.writeCoverage(new File(sessionDir, "coverage.csv"));
 				try (PrintStream text = new PrintStream(new File(sessionDir, "summary.txt"))) {
-					text.println("Episodes run: " + i + "/" + episodes + ", actions executed: " + actions
+					text.println("Episodes run: " + i + "/" + episodes + ", actions executed: " + executed
 							+ ", time: " + sessionTime / 1000 + " s");
+					if (testing)
+						text.println("Testing the model of " + burlapConfiguration.getParameterValue("burlap.testing.model")
+								+ ", epsilon " + epsilon);
 					text.println(environment.coverageSummary());
 				}
-				learner.serializeModel(networkFile);
+				// Save what was learned (nothing in testing)
+				if (!testing && dqn != null)
+					dqn.serializeModel(networkFile);
+				else if (!testing)
+					writeQTable(qTable, encoder, new File(sessionDir, "qtable.csv"));
 				environment.resetEnvironment();
 			}
-			learner.printNetworkSummary(new PrintStream(networkFile + ".txt"));
+			if (dqn != null && !testing)
+				dqn.printNetworkSummary(new PrintStream(networkFile + ".txt"));
 		} catch (IOException e) {
 			throw new RuntimeException("Unable to write the session to " + sessionDir, e);
 		}
 		System.out.println(environment.coverageSummary());
 		System.out.println("Session written to: " + sessionDir);
+	}
+
+	/** One testing episode: the learned Q-values choose, nothing is updated. A random action
+	 *  with probability epsilon or when the Q-table has never seen the state, otherwise the
+	 *  best one (random among equals). */
+	private static Episode testEpisode(LearningAgent learner, ExplorerEnvironment environment,
+			ExplorerStateEncoder encoder, List<ExplorerAction> actions, double epsilon) {
+		EncodedStateHashFactory hash = new EncodedStateHashFactory(encoder);
+		State state = environment.currentObservation();
+		Episode episode = new Episode(state);
+		while (!environment.isInTerminalState()) {
+			List<QValue> qs = null;
+			if (learner instanceof DeepQLearningRL)
+				qs = ((DeepQLearningRL) learner).qValues(state);
+			else {
+				QLearningStateNode node = ((QLearningRL) learner).getqFunction().get(hash.hashState(state));
+				if (node != null)
+					qs = node.qEntry;
+			}
+
+			Action action;
+			if (qs == null || RANDOM.nextDouble() < epsilon)
+				action = actions.get(RANDOM.nextInt(actions.size()));
+			else {
+				double max = Double.NEGATIVE_INFINITY;
+				List<Action> best = new ArrayList<>();
+				for (QValue q : qs) {
+					if (q.q > max) {
+						max = q.q;
+						best.clear();
+					}
+					if (q.q == max)
+						best.add(q.a);
+				}
+				action = best.get(RANDOM.nextInt(best.size()));
+			}
+			System.out.println("[testing] action: " + action.actionName() + (qs == null ? " (state not in the Q-table)" : ""));
+
+			EnvironmentOutcome eo = environment.executeAction(action);
+			episode.transition(action, eo.op, eo.r);
+			state = eo.op;
+		}
+		return episode;
+	}
+
+	/** Load what a training session learned, from burlap.testing.model (the session directory). */
+	private static void loadModel(LearningAgent learner, ExplorerStateEncoder encoder, List<ExplorerAction> actions) {
+		String dir = (String) burlapConfiguration.getParameterValue("burlap.testing.model");
+		File file = new File(dir, learner instanceof DeepQLearningRL ? "qnetwork.ser" : "qtable.csv");
+		if (dir.isEmpty() || !file.isFile())
+			throw new RuntimeException("Testing needs burlap.testing.model, the directory of a training session: "
+					+ file + " not found");
+		System.out.println("Loading the model: " + file);
+		if (learner instanceof DeepQLearningRL)
+			((DeepQLearningRL) learner).deserializeModel(file.getPath());
+		else
+			readQTable((QLearningRL) learner, encoder, actions, file);
 	}
 
 	/** The block observed for a tag, null when the cell is empty: the one at the tag position,
@@ -271,37 +341,56 @@ public class MineExplorer {
 		System.out.println("Total states over the " + domains.size() + " block targets: " + total);
 	}
 
-	/** Print the learner the BURLAP config asks for: the network, from the state vector to one
-	 *  output per action, and its parameters. */
+	/** Print the learner the BURLAP config asks for and its parameters. */
 	private static void printLearner(int inputs, int outputs) {
-		String algorithm = (String) burlapConfiguration.getParameterValue("burlap.algorithm");
-		if (!algorithm.equalsIgnoreCase("DeepQLearning"))
-			throw new RuntimeException("Algorithm " + algorithm + " not supported by the exploration system yet");
-		Object hidden = burlapConfiguration.getParameterValue("burlap.network.hidden_size");
-		System.out.println("Learner: " + algorithm + ", network " + inputs + " -> " + hidden + " -> " + hidden
-				+ " -> " + outputs
+		String learner = algorithm == BurlapAlgorithm.DeepQLearning
+				? "network " + inputs + " -> " + burlapConfiguration.getParameterValue("burlap.network.hidden_size")
+						+ " -> " + burlapConfiguration.getParameterValue("burlap.network.hidden_size") + " -> " + outputs
+				: "Q-table on the " + inputs + " features, " + outputs + " actions per state";
+		String parameters = algorithm == BurlapAlgorithm.DeepQLearning
+				? " lr=" + burlapConfiguration.getParameterValue("burlap.qlearning.dqn_lr")
+				: " lr=" + burlapConfiguration.getParameterValue("burlap.qlearning.lr")
+						+ " qinit=" + burlapConfiguration.getParameterValue("burlap.qlearning.qinit");
+		System.out.println("Learner: " + algorithm + ", " + learner
 				+ "\n  episodes=" + burlapConfiguration.getParameterValue("burlap.num_of_episodes")
 				+ " gamma=" + burlapConfiguration.getParameterValue("burlap.qlearning.gamma")
-				+ " lr=" + burlapConfiguration.getParameterValue("burlap.qlearning.dqn_lr")
+				+ parameters
 				+ " epsilon=" + burlapConfiguration.getParameterValue("burlap.qlearning.epsilonval")
 				+ " -> " + burlapConfiguration.getParameterValue("burlap.qlearning.epsilonmin")
-				+ " by " + burlapConfiguration.getParameterValue("burlap.qlearning.decayedepsilonstep") + " per episode"
-				+ "\n  replay buffer=" + burlapConfiguration.getParameterValue("burlap.network.replay_buffer_capacity")
-				+ " batch=" + burlapConfiguration.getParameterValue("burlap.network.batch_size")
-				+ " min replay=" + burlapConfiguration.getParameterValue("burlap.network.min_replay_size")
-				+ " target update=" + burlapConfiguration.getParameterValue("burlap.network.target_update_frequency"));
+				+ " by " + burlapConfiguration.getParameterValue("burlap.qlearning.decayedepsilonstep") + " per episode");
+		if (algorithm == BurlapAlgorithm.DeepQLearning)
+			System.out.println("  replay buffer=" + burlapConfiguration.getParameterValue("burlap.network.replay_buffer_capacity")
+					+ " batch=" + burlapConfiguration.getParameterValue("burlap.network.batch_size")
+					+ " min replay=" + burlapConfiguration.getParameterValue("burlap.network.min_replay_size")
+					+ " target update=" + burlapConfiguration.getParameterValue("burlap.network.target_update_frequency"));
 	}
 
-	/** The DQN of the BURLAP config. Its outputs follow the order of the action list; the
+	/** The learner of the BURLAP config. Its Q-values follow the order of the action list; the
 	 *  domain only carries the actions, since the transitions come from the live server. */
-	private static DeepQLearningRL createLearner(ExplorerStateEncoder encoder, List<ExplorerAction> actions) {
+	private static LearningAgent createLearner(ExplorerStateEncoder encoder, List<ExplorerAction> actions) {
 		SADomain domain = new SADomain();
 		domain.addActionType(new ExplorerActionType(actions));
 		domain.setModel(new MinecraftSampleModel());
+		int maxActions = (int) mineConfiguration.getParameterValue("mine.max_actions_per_episode");
+
+		if (algorithm == BurlapAlgorithm.QLearning) {
+			// Same encoding as the DQN: one row per distinct state vector
+			QLearningRL learner = new QLearningRL(domain,
+					(double) burlapConfiguration.getParameterValue("burlap.qlearning.gamma"),
+					new EncodedStateHashFactory(encoder),
+					(double) burlapConfiguration.getParameterValue("burlap.qlearning.qinit"),
+					(double) burlapConfiguration.getParameterValue("burlap.qlearning.lr"),
+					(double) burlapConfiguration.getParameterValue("burlap.qlearning.epsilonval"),
+					(double) burlapConfiguration.getParameterValue("burlap.qlearning.decayedepsilonstep"),
+					maxActions,
+					new NoStateSimilarity());
+			learner.setEpsilonMin((double) burlapConfiguration.getParameterValue("burlap.qlearning.epsilonmin"));
+			return learner;
+		}
+
 		List<String> actionNames = new ArrayList<>();
 		for (ExplorerAction action : actions)
 			actionNames.add(action.actionName());
-
 		DeepQLearningRL learner = new DeepQLearningRL(domain,
 				(double) burlapConfiguration.getParameterValue("burlap.qlearning.gamma"),
 				encoder,
@@ -309,7 +398,7 @@ public class MineExplorer {
 				(double) burlapConfiguration.getParameterValue("burlap.qlearning.dqn_lr"),
 				(double) burlapConfiguration.getParameterValue("burlap.qlearning.epsilonval"),
 				(double) burlapConfiguration.getParameterValue("burlap.qlearning.decayedepsilonstep"),
-				(int) mineConfiguration.getParameterValue("mine.max_actions_per_episode"),
+				maxActions,
 				(double) burlapConfiguration.getParameterValue("burlap.qlearning.epsilonmin"),
 				(int) burlapConfiguration.getParameterValue("burlap.network.hidden_size"));
 		learner.setReplayBufferCapacity((int) burlapConfiguration.getParameterValue("burlap.network.replay_buffer_capacity"));
@@ -317,6 +406,58 @@ public class MineExplorer {
 		learner.setMinReplaySize((int) burlapConfiguration.getParameterValue("burlap.network.min_replay_size"));
 		learner.setTargetUpdateFrequency((int) burlapConfiguration.getParameterValue("burlap.network.target_update_frequency"));
 		return learner;
+	}
+
+	/** One row per state of the Q-table: the non-zero features, then the Q-value of each action. */
+	private static void writeQTable(QLearningRL learner, ExplorerStateEncoder encoder, File file) {
+		try (PrintStream w = new PrintStream(file)) {
+			boolean header = true;
+			for (QLearningStateNode node : learner.getqFunction().values()) {
+				if (header) {
+					w.print("state");
+					for (QValue q : node.qEntry)
+						w.print("," + q.a.actionName());
+					w.println();
+					header = false;
+				}
+				w.print("\"" + encoder.active(((EncodedStateHashFactory.EncodedState) node.s).features) + "\"");
+				for (QValue q : node.qEntry)
+					w.print("," + q.q);
+				w.println();
+			}
+		} catch (IOException e) {
+			throw new RuntimeException("Unable to write " + file, e);
+		}
+	}
+
+	/** The Q-table written by writeQTable. It must come from the same level: the states are
+	 *  rebuilt from the feature labels of the encoder. */
+	private static void readQTable(QLearningRL learner, ExplorerStateEncoder encoder, List<ExplorerAction> actions,
+			File file) {
+		Map<String, ExplorerAction> byName = new HashMap<>();
+		for (ExplorerAction action : actions)
+			byName.put(action.actionName(), action);
+		try {
+			List<String> lines = Files.readAllLines(file.toPath());
+			String[] header = lines.get(0).split(",");
+			for (String line : lines.subList(1, lines.size())) {
+				int close = line.indexOf('"', 1);   // the state is the quoted first column
+				String[] qs = line.substring(close + 2).split(",");
+				EncodedStateHashFactory.EncodedState s = new EncodedStateHashFactory.EncodedState(null,
+						encoder.vector(line.substring(1, close)));
+				QLearningStateNode node = new QLearningStateNode(s);
+				for (int i = 0; i < qs.length; i++) {
+					ExplorerAction action = byName.get(header[i + 1]);
+					if (action == null)
+						throw new RuntimeException("Action " + header[i + 1] + " of " + file + " is not in this level");
+					node.addQValue(action, Double.parseDouble(qs[i]));
+				}
+				learner.getqFunction().put(s, node);
+			}
+		} catch (IOException e) {
+			throw new RuntimeException("Unable to read " + file, e);
+		}
+		System.out.println("Q-table loaded: " + learner.getqFunction().size() + " states");
 	}
 
 	/** One row per action, in the order of the list: the index is the one the learner will use.
@@ -340,11 +481,13 @@ public class MineExplorer {
 	/**
 	 * @param args [0] = testbench URL (default localhost:3000),
 	 *             [1] = level csv path (default the big level),
-	 *             [2] = mode (training, testing, random; not used yet),
+	 *             [2] = mode (trainingMode or testingMode),
 	 *             [3] = BURLAP config file (the algorithm and its parameters),
 	 *             [4] = Minecraft SUT config file, i.e. mineAgent.config
 	 */
 	public static void main(String[] args) {
+
+		// Save all passed arguments
 		String testbenchUrl = args.length > 0 ? args[0] : defaultTestbenchUrl;
 		String levelCsv = args.length > 1 ? args[1] : defaultLevelCsv;
 
@@ -359,10 +502,22 @@ public class MineExplorer {
 				throw new RuntimeException("Cannot load Minecraft configuration " + args[4]);
 		}
 
-		// outputDir = rlbt-files/minecraft-results/<level>/exploration/<systemtime>
+		String mode = args.length > 2 ? args[2] : "trainingMode";
+		if (!mode.equals("trainingMode") && !mode.equals("testingMode"))
+			throw new RuntimeException("Mode " + mode + " not supported by the exploration system");
+		testing = mode.equals("testingMode");
+
+		String name = (String) burlapConfiguration.getParameterValue("burlap.algorithm");
+		for (BurlapAlgorithm a : BurlapAlgorithm.values())
+			if (a.toString().equalsIgnoreCase(name))
+				algorithm = a;
+		if (algorithm == null)
+			throw new RuntimeException("Algorithm " + name + " not supported by the exploration system");
+
 		String levelName = new File(levelCsv).getName().replaceFirst("\\.csv$", "");
-		outputDir = outputDir + File.separator + levelName + File.separator + "exploration"
-				+ File.separator + systemtime;
+		outputDir = outputDir + File.separator + levelName + File.separator + "exploration" + File.separator
+				+ algorithm + File.separator + (testing ? "testing" + File.separator : "") + systemtime;
+		// outputDir: rlbt-files/minecraft-results/<level>/exploration/<algorithm>/[testing/]<systemtime>
 
 		new MineExplorer().explore(testbenchUrl, levelCsv);
 	}
