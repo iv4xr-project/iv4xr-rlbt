@@ -44,6 +44,7 @@ class ExplorerEnvironment implements Environment {
 	private final Map<String, Vec3> tagPositions;
 	private final Map<String, String> uuidTags = new HashMap<>();
 	private final TargetCoverage coverage;
+	private final Map<String, Object> startLevel; // what every reset must bring back
 
 	private final int maxTicksPerAction;
 	private final int maxActionsPerEpisode;
@@ -59,14 +60,16 @@ class ExplorerEnvironment implements Environment {
 	/**
 	 * @param agent        the agent, already attached to env and so logged into the server
 	 * @param tagPositions the tagged positions of the level, already built
+	 * @param start        the observation of the level once built
 	 * @param domains      the domain of each block target: the states the reward pays for
 	 * @param transitions  the CSV that gets one row per executed action
 	 */
-	ExplorerEnvironment(MinecraftEnv env, MinecraftAgent agent, Map<String, Vec3> tagPositions,
+	ExplorerEnvironment(MinecraftEnv env, MinecraftAgent agent, Map<String, Vec3> tagPositions, WorldModel start,
 			Map<String, TargetDomain> domains, MinecraftConfiguration configuration, File transitions) {
 		this.env = env;
 		this.agent = agent;
 		this.tagPositions = tagPositions;
+		this.startLevel = MineExplorer.levelSnapshot(env, start, tagPositions);
 		this.transitions = transitions;
 		this.coverage = new TargetCoverage(domains);
 		maxTicksPerAction = (int) configuration.getParameterValue("mine.max_ticks_per_action");
@@ -318,6 +321,11 @@ class ExplorerEnvironment implements Environment {
 		// the reset summons the entities again: they get new UUIDs
 		uuidTags.clear();
 		env.tagUuids.forEach((tag, uuid) -> uuidTags.put(uuid, tag));
+		// the episode starts only on the level as it was at the start of the session
+		if (MineExplorer.observeBuiltLevel(env, tagPositions, startLevel) == null)
+			throw new RuntimeException("Level not back to its start state " + MineExplorer.BUILD_TIMEOUT_MS / 1000
+					+ " s after the reset of episode " + episode + ": expected " + startLevel + ", seen "
+					+ MineExplorer.levelSnapshot(env, env.observe(MineExplorer.AGENT_ID), tagPositions));
 		episode++;
 		steps = 0;
 		lastReward = 0;

@@ -75,6 +75,8 @@ public class MineExplorer {
 	static final String EMPTY_HAND = "empty";
 	static final String PLACE_ON_PREFIX = "place_";
 	static final String PLACE_ON_ACTION = "placedOn";
+	static final long BUILD_POLL_MS = 500;   	// Wait for the built level: one observation every 500 ms, for 20 s at most
+	static final long BUILD_TIMEOUT_MS = 20_000;
 
 	public void explore(String testbenchUrl, String levelCsv) {
 		System.out.println("-------------------------- Starting exploration on Minecraft ---------------------");
@@ -99,7 +101,12 @@ public class MineExplorer {
 		targets.addAll(env.tagUuids.keySet());
 		System.out.println("Targets found in the level (" + targets.size() + "): " + targets);
 
-		WorldModel start = env.observe(AGENT_ID);
+		// The domains and the select actions are built on this observation: level and inventory must be there
+		WorldModel start = observeBuiltLevel(env, tagPositions, null);
+		if (start == null)
+			throw new RuntimeException("Level not ready " + BUILD_TIMEOUT_MS / 1000 + " s after building it (no block target"
+					+ " or no item seen, or still changing): is the testbench running with the exploration config"
+					+ " (scan radius of the whole level)?");
 		Map<String, TargetDomain> domains = targetDomains(env, start, tagPositions,
 				loadBlockFamilies(defaultBlockFamilies));
 		printTargetDomains(domains);
@@ -131,7 +138,7 @@ public class MineExplorer {
 		writeActions(new File(sessionDir, "actions.csv"), actions, tagPositions);
 
 		// Setup MineExplorer environment
-		ExplorerEnvironment environment = new ExplorerEnvironment(env, agent, tagPositions, domains, mineConfiguration, new File(sessionDir, "transitions.csv"));
+		ExplorerEnvironment environment = new ExplorerEnvironment(env, agent, tagPositions, start, domains, mineConfiguration, new File(sessionDir, "transitions.csv"));
 		ExplorerState seen = environment.observe(start);
 		ExplorerStateEncoder encoder = new ExplorerStateEncoder(domains, new ArrayList<>(items), seen, tagPositions);
 		System.out.println("State vector: " + encoder.describe() + "\n  features per label: " + encoder.sizes());
@@ -277,6 +284,55 @@ public class MineExplorer {
 	static WorldEntity targetBlock(WorldModel wom, String tag, Vec3 p) {
 		int y = Math.round(p.y) + (tag.startsWith(PLACE_ON_PREFIX) ? 1 : 0);
 		return wom.elements.get(StatusToWorldModel.BLOCK_ID_PREFIX + Math.round(p.x) + "_" + y + "_" + Math.round(p.z));
+	}
+
+	/** Observe the level once it is built. The testbench answers a build or a reset after a fixed
+	 *  wait, while its /setblock and /item commands may still be on their way: observe until at
+	 *  least one block target is seen, the inventory is not empty (the select actions come from it)
+	 *  and the level is the same in two observations in a row or, after a reset, the same as at the
+	 *  start of the session (expected). Null if that does not happen within BUILD_TIMEOUT_MS. */
+	static WorldModel observeBuiltLevel(MinecraftEnv env, Map<String, Vec3> tagPositions, Map<String, Object> expected) {
+		long deadline = System.currentTimeMillis() + BUILD_TIMEOUT_MS;
+		Map<String, Object> previous = null;
+		while (true) {
+			WorldModel wom = env.observe(AGENT_ID);
+			Map<String, Object> snapshot = levelSnapshot(env, wom, tagPositions);
+			if (snapshot != null && snapshot.equals(expected != null ? expected : previous))
+				return wom;
+			if (System.currentTimeMillis() > deadline)
+				return null;
+			previous = snapshot;
+			try {
+				Thread.sleep(BUILD_POLL_MS);
+			} catch (InterruptedException e) {
+				Thread.currentThread().interrupt();
+				throw new RuntimeException("Interrupted while waiting for the level", e);
+			}
+		}
+	}
+
+	/** The block of each block target (name and dynamic properties) and the inventory counts;
+	 *  null when no block target or no item is seen yet. */
+	static Map<String, Object> levelSnapshot(MinecraftEnv env, WorldModel wom, Map<String, Vec3> tagPositions) {
+		Map<String, Object> snapshot = new TreeMap<>();
+		boolean seen = false;
+		for (Map.Entry<String, Vec3> tag : tagPositions.entrySet())
+			if (!env.tagUuids.containsKey(tag.getKey())) {
+				WorldEntity we = targetBlock(wom, tag.getKey(), tag.getValue());
+				if (we == null) {
+					snapshot.put("block:" + tag.getKey(), TargetDomain.AIR);
+					continue;
+				}
+				Map<String, Object> properties = new TreeMap<>(we.properties);
+				properties.keySet().removeAll(FIXED_PROPERTIES);
+				snapshot.put("block:" + tag.getKey(), we.type + properties);
+				seen = true;
+			}
+		Object inventory = wom.elements.get(AGENT_ID).properties.get(StatusToWorldModel.INVENTORY_PROP);
+		if (!seen || !(inventory instanceof Map) || ((Map<?, ?>) inventory).isEmpty())
+			return null;
+		((Map<?, ?>) inventory).forEach((item, count) -> snapshot.put("inv:" + item, count));
+		return snapshot;
 	}
 
 	/** The block families file as block name -> the names of its family: the names a block can
