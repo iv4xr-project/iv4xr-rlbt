@@ -7,5 +7,5 @@
     "waxed_oxidized_copper_door"
   ],
   "cake": ["cake", "candle_cake"],
-  "air": ["air", "stone", "acacia_log", "stripped_acacia_log"]
+  "air": ["air", "stone", "acacia_log", "stripped_acacia_log", "powder_snow"]
 }
