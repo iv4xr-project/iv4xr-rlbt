@@ -8,6 +8,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -26,6 +27,7 @@ import burlap.behavior.singleagent.learning.tdmethods.QLearningStateNode;
 import burlap.behavior.valuefunction.QValue;
 import burlap.mdp.core.action.Action;
 import burlap.mdp.core.state.State;
+import burlap.statehashing.HashableState;
 import burlap.mdp.singleagent.environment.EnvironmentOutcome;
 import burlap.mdp.singleagent.SADomain;
 import eu.fbk.iv4xr.minecraftlib.MinecraftAgent;
@@ -223,13 +225,18 @@ public class MineExplorer {
 	}
 
 	/** One testing episode: the learned Q-values choose, nothing is updated. A random action
-	 *  with probability epsilon or when the Q-table has never seen the state, otherwise the
-	 *  best one (random among equals). */
+	 *  with probability epsilon, when the Q-table has never seen the state or when the state
+	 *  was already reached in the episode (a null action or a cycle, e.g. a lever toggled on
+	 *  and off: the best action would lead around it again, the DQN has no unknown states),
+	 *  otherwise the best one (random among equals). */
 	private static Episode testEpisode(LearningAgent learner, ExplorerEnvironment environment,
 			ExplorerStateEncoder encoder, List<ExplorerAction> actions, double epsilon) {
 		EncodedStateHashFactory hash = new EncodedStateHashFactory(encoder);
 		State state = environment.currentObservation();
 		Episode episode = new Episode(state);
+		Set<HashableState> reached = new HashSet<>();
+		reached.add(hash.hashState(state));
+		boolean revisited = false;
 		while (!environment.isInTerminalState()) {
 			List<QValue> qs = null;
 			if (learner instanceof DeepQLearningRL)
@@ -241,7 +248,7 @@ public class MineExplorer {
 			}
 
 			Action action;
-			if (qs == null || RANDOM.nextDouble() < epsilon)
+			if (qs == null || revisited || RANDOM.nextDouble() < epsilon)
 				action = actions.get(RANDOM.nextInt(actions.size()));
 			else {
 				double max = Double.NEGATIVE_INFINITY;
@@ -256,11 +263,13 @@ public class MineExplorer {
 				}
 				action = best.get(RANDOM.nextInt(best.size()));
 			}
-			System.out.println("[testing] action: " + action.actionName() + (qs == null ? " (state not in the Q-table)" : ""));
+			System.out.println("[testing] action: " + action.actionName()
+					+ (qs == null ? " (state not in the Q-table)" : revisited ? " (state already reached)" : ""));
 
 			EnvironmentOutcome eo = environment.executeAction(action);
 			episode.transition(action, eo.op, eo.r);
 			state = eo.op;
+			revisited = !reached.add(hash.hashState(state));
 		}
 		return episode;
 	}
